@@ -1,8 +1,8 @@
 name: rich_code_editor
 description: Now create your own code editors in Flutter
 version: 0.0.1
-author: Sovit Poudel
-homepage:
+author: Sovit Poudel <sovit.poudel@gmail.com>
+homepage: https://github.com/psovit/rich_code_editor
 
 environment:
   sdk: ">=2.1.0 <3.0.0"
