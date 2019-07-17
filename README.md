@@ -2,7 +2,7 @@
 
 A simple package that supports creating code editors in Flutter.
 
-![alt text](https://github.com/psovit/rich_code_editor/master/demo.gif)
+(https://github.com/psovit/rich_code_editor//blob/master/demo.gif)
 
 
 ## Getting Started
