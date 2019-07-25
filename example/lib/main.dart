@@ -1,14 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:rich_code_editor/editor/widget/rich_editable_text.dart';
 import 'package:rich_code_editor/rich_code_editor.dart';
-
 
 void main() {
   runApp(MaterialApp(
-    home: DemoCodeEditor(),
+    home: Home(),
   ));
 }
 
-class DemoCodeEditor extends StatelessWidget {
+class Home extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        child: Center(
+          child: FlatButton(
+            onPressed: () {
+              Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => DemoCodeEditor()));
+            },
+            child: Text("My Code Editor"),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DemoCodeEditor extends StatefulWidget {
+  @override
+  _DemoCodeEditorState createState() => _DemoCodeEditorState();
+}
+
+class _DemoCodeEditorState extends State<DemoCodeEditor> {
   GlobalKey<RichTextFieldState> _richTextFieldState =
       new GlobalKey<RichTextFieldState>();
 
