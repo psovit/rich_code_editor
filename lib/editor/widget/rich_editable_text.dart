@@ -383,7 +383,7 @@ class RichEditableTextState extends State<RichEditableText>
   void updateEditingValue(RichTextEditingValue value) {
     bool textChanged = value.value != _editingValue.value;
 
-    _lastKnownRemoteTextEditingValue = value;
+    //_lastKnownRemoteTextEditingValue = value;
     _formatAndSetValue(value, textChanged);
   }
 
