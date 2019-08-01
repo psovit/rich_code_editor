@@ -35,7 +35,8 @@ class RichTextEditingValue extends AbstractTextEditingValue<TextSpan> {
   const RichTextEditingValue(
       {this.value: const TextSpan(text: "", style: TextStyle()),
       this.selection: const TextSelection.collapsed(offset: -1),
-      this.composing: TextRange.empty})
+      this.composing: TextRange.empty, 
+      this.remotelyEdited = false})
       : assert(value != null),
         assert(selection != null),
         assert(composing != null);
@@ -56,6 +57,7 @@ class RichTextEditingValue extends AbstractTextEditingValue<TextSpan> {
         start: encoded['composingBase'] ?? -1,
         end: encoded['composingExtent'] ?? -1,
       ),
+      remotelyEdited: encoded['remotelyEdited'] ?? false,
     );
   }
 
@@ -74,12 +76,15 @@ class RichTextEditingValue extends AbstractTextEditingValue<TextSpan> {
   /// Creates a copy of this value but with the given fields replaced with the new values.
   @override
   AbstractTextEditingValue copyWith(
-      {TextSpan value, TextSelection selection, TextRange composing}) {
+      {TextSpan value, TextSelection selection, TextRange composing, bool remotelyEdited = false}) {
     return new RichTextEditingValue(
         value: value ?? this.value,
         selection: selection ?? this.selection,
-        composing: composing ?? this.composing);
+        composing: composing ?? this.composing,
+        remotelyEdited : remotelyEdited ?? this.remotelyEdited);
   }
+
+  final bool remotelyEdited;//set to true if text was added programatically or by different method other than device keyboard
 
   @override
   int get length => Extensions.length(value);
@@ -110,11 +115,11 @@ class RichTextEditingValue extends AbstractTextEditingValue<TextSpan> {
 }
 
 abstract class AbstractTextEditingValue<Value> {
-  const AbstractTextEditingValue({this.value, this.selection, this.composing});
+  const AbstractTextEditingValue({this.value, this.selection, this.composing, this.remotelyEdited});
 
   /// Creates a copy of this value but with the given fields replaced with the new values.
   AbstractTextEditingValue copyWith(
-      {Value value, TextSelection selection, TextRange composing});
+      {Value value, TextSelection selection, TextRange composing, bool remotelyEdited});
 
   /// Returns a representation of this object as a JSON object.
   Map<String, dynamic> toJSON() {
@@ -126,6 +131,7 @@ abstract class AbstractTextEditingValue<Value> {
       'selectionIsDirectional': selection.isDirectional,
       'composingBase': composing.start,
       'composingExtent': composing.end,
+      'remotelyEdited': remotelyEdited
     };
   }
 
@@ -141,6 +147,8 @@ abstract class AbstractTextEditingValue<Value> {
   int get length;
 
   bool get isNotEmpty;
+
+  final bool remotelyEdited;//set to true if text was added programatically or by different method other than device keyboard
 
   String get text;
 
