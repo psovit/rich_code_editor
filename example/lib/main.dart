@@ -37,6 +37,12 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
       new GlobalKey<RichTextFieldState>();
 
   @override
+  void dispose() {
+    _richTextFieldState.currentState?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return new Scaffold(
       appBar: new AppBar(
@@ -55,16 +61,13 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
                       border: new Border.all(
                           color: Theme.of(context).primaryColor)),
                   child: new RichTextField(
-                    richTextEditingValueParser: DummyParser(),//replace this with your parser implementation
+                    richTextEditingValueParser:
+                        DummyParser(), //replace this with your parser implementation
                     key: _richTextFieldState,
                     onChangedSpan: (span) {},
-                    onChanged: (text) {},
                     maxLines: null,
                     decoration: null,
-                    style: TextStyle(
-                      fontSize: 16.0,
-                      color: Colors.black
-                    ),
+                    style: TextStyle(fontSize: 16.0, color: Colors.black),
                   ),
                 ),
               ),
