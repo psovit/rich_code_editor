@@ -78,6 +78,7 @@ class RichTextField extends StatefulWidget {
     this.decoration: const InputDecoration(),
     TextInputType keyboardType: TextInputType.text,
     this.style,
+    this.cursorColor,
     this.textAlign: TextAlign.start,
     this.autofocus: false,
     this.autocorrect: false,
@@ -170,6 +171,11 @@ class RichTextField extends StatefulWidget {
   /// Called when the user indicates that they are done editing the text in the
   /// field.
   final ValueChanged<String> onSubmitted;
+
+  /// The color to use when painting the cursor.
+  ///
+  /// Defaults to the theme's `cursorColor` when null.
+  final Color cursorColor;
 
   void setNewStyle(TextStyle textStyle) {}
 
@@ -274,7 +280,7 @@ class RichTextFieldState extends State<RichTextField> {
           autofocus: widget.autofocus,
           autocorrect: widget.autocorrect,
           maxLines: widget.maxLines,
-          cursorColor: themeData.textSelectionColor,
+          cursorColor: widget.cursorColor == null ? themeData.cursorColor : widget.cursorColor,
           selectionColor: themeData.textSelectionColor,
           onChanged: widget.onChanged,
           onChangedSpan: widget.onChangedSpan,
