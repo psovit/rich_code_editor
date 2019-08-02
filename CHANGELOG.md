@@ -1,3 +1,5 @@
+## [0.1.0] - 2nd August 2019
+* Allow Changing Cursor Color
 ## [0.0.3] - 1st August 2019
 * Support updating RichTextEditingValue remotely
 ## [0.0.2] - 17th July 2019
