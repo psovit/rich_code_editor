@@ -1,6 +1,6 @@
 name: rich_code_editor
-description: Now create your own rich code editor in Flutter. Similar to a TextField, you can make use of the RichTextField widget to create code editor with syntax highlight support for any programming lanugages.
-version: 0.1.0
+description: Now create your own rich code editor with syntax highlight support in Flutter.
+version: 0.1.1
 author: Sovit Poudel <sovit.poudel@gmail.com>
 homepage: https://github.com/psovit/rich_code_editor
 
