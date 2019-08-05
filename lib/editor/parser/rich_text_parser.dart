@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
-import 'package:rich_code_editor/editor/keyboard/text_input_client.dart';
+import 'package:rich_code_editor/editor/keyboard/input_client.dart';
 
 // This is the interface that must be implemented by Syntax highlighter's for each programming language
 abstract class RichTextEditingValueParserBase {

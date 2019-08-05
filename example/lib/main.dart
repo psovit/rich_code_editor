@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:rich_code_editor/editor/widget/rich_editable_text.dart';
 import 'package:rich_code_editor/rich_code_editor.dart';
 
 void main() {
@@ -42,6 +41,8 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
     super.dispose();
   }
 
+  var tbKey = 1;
+
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
@@ -56,20 +57,41 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
               child: new Container(
                 padding: new EdgeInsets.all(16.0),
                 child: new Container(
-                  padding: EdgeInsets.all(24.0),
-                  decoration: new BoxDecoration(
-                      border: new Border.all(
-                          color: Theme.of(context).primaryColor)),
-                  child: new RichTextField(
-                    richTextEditingValueParser:
-                        DummyParser(), //replace this with your parser implementation
-                    key: _richTextFieldState,
-                    onChangedSpan: (span) {},
-                    maxLines: null,
-                    decoration: null,
-                    style: TextStyle(fontSize: 16.0, color: Colors.black),
-                  ),
-                ),
+                    padding: EdgeInsets.all(24.0),
+                    decoration: new BoxDecoration(
+                        border: new Border.all(
+                            color: Theme.of(context).primaryColor)),
+                    child: PageView(
+                      onPageChanged: (i) {
+                        if(i == 1) {
+                          setState(() {
+                            tbKey ++;
+                          });
+                        }
+                      },
+                      children: <Widget>[
+                        new RichTextField(
+                          richTextEditingValueParser:
+                              DummyParser(), //replace this with your parser implementation
+                          key: _richTextFieldState,
+                          onChangedSpan: (span) {},
+                          onChanged: (t) {
+                            print(t);                            
+                          },
+                          maxLines: null,
+                          decoration: null,
+                          autofocus: true,
+                          style: TextStyle(fontSize: 16.0, color: Colors.black),
+                        ),
+                        TextField(
+                          key: Key(tbKey.toString()),
+                          autofocus: false,
+                          decoration: InputDecoration(
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6.0))),
+                        ),
+                      ],
+                    )),
               ),
             ),
           ],

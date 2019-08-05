@@ -9,8 +9,15 @@ import 'package:flutter/material.dart'
     hide TextSelectionControls, TextSelectionOverlay;
 import 'package:flutter/rendering.dart' show ViewportOffset;
 import 'package:flutter/services.dart'
-    show TextRange, TextInputAction, TextInputConfiguration;
-import 'package:rich_code_editor/editor/keyboard/text_input_client.dart';
+    show
+        RawFloatingCursorPoint,
+        TextInput,
+        TextInputAction,
+        TextInputClient,
+        TextInputConfiguration,
+        TextInputConnection,
+        TextRange;
+import 'package:rich_code_editor/editor/keyboard/input_client.dart';
 import 'package:rich_code_editor/editor/parser/rich_text_parser.dart';
 import 'package:rich_code_editor/editor/rendering/rich_editable.dart';
 import 'package:rich_code_editor/editor/utils/extensions.dart';
@@ -292,7 +299,7 @@ class RichEditableText extends StatefulWidget {
 /// State for a [RichEditableText].
 class RichEditableTextState extends State<RichEditableText>
     with AutomaticKeepAliveClientMixin
-    implements TextInputClient<RichTextEditingValue> {
+    implements TextInputClient {
   Timer _cursorTimer;
   final ValueNotifier<bool> _showCursor = new ValueNotifier<bool>(false);
 
@@ -380,13 +387,33 @@ class RichEditableTextState extends State<RichEditableText>
   RichTextEditingValue _lastKnownRemoteTextEditingValue;
 
   @override
-  void updateEditingValue(RichTextEditingValue value) {
-    bool textChanged = value.value != _editingValue.value;
+  void updateEditingValue(TextEditingValue value) {
+    bool textChanged = value.text != _editingValue.value.text;
+    if (!textChanged) return;
+    var newValue = new RichTextEditingValue(
+      value: new TextSpan(text: value.text, style: widget.style),
+      selection: new TextSelection(
+        baseOffset: value.selection.baseOffset ?? -1,
+        extentOffset: value.selection.extentOffset ?? -1,
+        affinity: TextAffinity.downstream,
+        isDirectional: value.selection.isDirectional ?? false,
+      ),
+      composing: new TextRange(
+        start: value.composing.start ?? -1,
+        end: value.composing.end ?? -1,
+      ),
+      remotelyEdited: false,
+    );
 
-    if (!value.remotelyEdited) {
-      _lastKnownRemoteTextEditingValue = value;
-    }
-    _formatAndSetValue(value, textChanged);
+    _editingValue = _richTextEditingValueParser.parse(
+        oldValue: _editingValue.copyWith(),
+        newValue: newValue,
+        style: _currentSelectedStyle.copyWith());
+
+    // if (!value.remotelyEdited) {
+    //   _lastKnownRemoteTextEditingValue = value;
+    // }
+    //_formatAndSetValue(value, textChanged);
   }
 
   @override
@@ -406,21 +433,16 @@ class RichEditableTextState extends State<RichEditableText>
     }
   }
 
-  @override
-  RichTextEditingValue getValue(Map<String, dynamic> encoded) =>
-      _richTextEditingValueParser.parse(
-          oldValue: _editingValue.copyWith(),
-          newValue: new RichTextEditingValue.fromJSON(
-              encoded, widget.style ?? Theme.of(context).textTheme.subhead),
-          style: _currentSelectedStyle.copyWith());
-
   void _updateRemoteEditingValueIfNeeded() {
     if (!_hasInputConnection) return;
     final RichTextEditingValue localValue = _editingValue;
     if (localValue == _lastKnownRemoteTextEditingValue) return;
     _lastKnownRemoteTextEditingValue = localValue;
 
-    _textInputConnection.setEditingState(localValue);
+    _textInputConnection.setEditingState(TextEditingValue(
+        text: localValue.text,
+        composing: localValue.composing,
+        selection: localValue.selection));
   }
 
   RichTextEditingValue get _editingValue => widget.controller.value;
@@ -461,7 +483,10 @@ class RichEditableTextState extends State<RichEditableText>
               inputAction: widget.keyboardType == TextInputType.multiline
                   ? TextInputAction.newline
                   : TextInputAction.done))
-        ..setEditingState(localValue);
+        ..setEditingState(TextEditingValue(
+            text: localValue.text,
+            composing: localValue.composing,
+            selection: localValue.selection));
     }
     _textInputConnection.show();
   }
@@ -659,6 +684,11 @@ class RichEditableTextState extends State<RichEditableText>
         );
       },
     );
+  }
+
+  @override
+  void updateFloatingCursor(RawFloatingCursorPoint point) {
+    // TODO: implement updateFloatingCursor
   }
 }
 
