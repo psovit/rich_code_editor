@@ -2,7 +2,8 @@
 // @immutable
 import 'package:flutter/widgets.dart';
 
-class RichTextEditingValue { //extends AbstractTextEditingValue<TextSpan> {
+class RichTextEditingValue {
+  //extends AbstractTextEditingValue<TextSpan> {
   /// Creates information for editing a run of text.
   ///
   /// The selection and composing range must be within the text.
@@ -12,7 +13,7 @@ class RichTextEditingValue { //extends AbstractTextEditingValue<TextSpan> {
   const RichTextEditingValue(
       {this.value: const TextSpan(text: "", style: TextStyle()),
       this.selection: const TextSelection.collapsed(offset: -1),
-      this.composing: TextRange.empty, 
+      this.composing: TextRange.empty,
       this.remotelyEdited = false})
       : assert(value != null),
         assert(selection != null),
@@ -32,15 +33,19 @@ class RichTextEditingValue { //extends AbstractTextEditingValue<TextSpan> {
 
   /// Creates a copy of this value but with the given fields replaced with the new values.
   RichTextEditingValue copyWith(
-      {TextSpan value, TextSelection selection, TextRange composing, bool remotelyEdited = false}) {
+      {TextSpan value,
+      TextSelection selection,
+      TextRange composing,
+      bool remotelyEdited = false}) {
     return new RichTextEditingValue(
         value: value ?? this.value,
         selection: selection ?? this.selection,
         composing: composing ?? this.composing,
-        remotelyEdited : remotelyEdited ?? this.remotelyEdited);
+        remotelyEdited: remotelyEdited ?? this.remotelyEdited);
   }
 
-  final bool remotelyEdited;//set to true if text was added programatically or by different method other than device keyboard
+  final bool
+      remotelyEdited; //set to true if text was added programatically or by different method other than device keyboard
 
   String get text => value.toPlainText();
 }
