@@ -26,27 +26,8 @@ Check out example project for getting started with this project.
 4. RichTextEditingValueParser
 	- responsible for parsing text and style
 5. RichTextEditingValue
-	- extends AbstractTextEditingValue<TextSpan>
 	- similar to TextEditingValue
 	- uses TextSpan instead of String
-6. AbstractTextEditingValue
-	- abstract class <T> type
-7. TextInputClient
-	- abstract class
-	- T type where <T extends AbstractTextEditingValue>
-	- an interface to receive information from TextInput
-	- same as Flutter's TextInputClient
-	- plus getValue to get value
-8. TextInputConnection 
-	- a interface for interacting with a text input control.
-	- same as Flutter's TextInputConnection 
-	- but with setEditingState taking AbstractTextEditingValue as argument
-	- requires TextInputClient _client that the connection should be established with (RichEditableTextState)
-9. _TextInputClientHandler 
-	- same as Flutter's _TextInputClientHandler
-10. TextInput 
-	- an interface to the system's text input control.
-	- same as Flutter's TextInput minus debug info/assertion
 11. RichTextEditingController
 	- extends ValueNotifier of type <RichTextEditingValue>
 	- similar to TextEditingController but for <RichTextEditingValue>
