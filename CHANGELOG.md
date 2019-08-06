@@ -1,3 +1,5 @@
+## [0.1.21] - 6th August 2019
+* Implement onChanged method
 ## [0.1.2] - 6th August 2019
 * Remotely edited change reflection fix
 ## [0.1.1] - 5th August 2019
