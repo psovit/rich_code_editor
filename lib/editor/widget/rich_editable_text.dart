@@ -410,9 +410,9 @@ class RichEditableTextState extends State<RichEditableText>
         newValue: newValue,
         style: _currentSelectedStyle.copyWith());
 
-    // if (!value.remotelyEdited) {
-    //   _lastKnownRemoteTextEditingValue = value;
-    // }
+    if (!_editingValue.remotelyEdited) {
+      _lastKnownRemoteTextEditingValue = _editingValue;
+    }
     //_formatAndSetValue(value, textChanged);
   }
 
@@ -548,14 +548,6 @@ class RichEditableTextState extends State<RichEditableText>
           duration: const Duration(milliseconds: 50),
         );
       });
-    }
-  }
-
-  void _formatAndSetValue(RichTextEditingValue value, bool textChanged) {
-    _editingValue = value;
-    if (textChanged && widget.onChanged != null) {
-      widget.onChanged(value.value.toPlainText());
-      widget.onChangedSpan(value.value);
     }
   }
 
