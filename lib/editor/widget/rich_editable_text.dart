@@ -171,7 +171,6 @@ class RichEditableText extends StatefulWidget {
     this.onChanged,
     this.onSubmitted,
     this.onSelectionChanged,
-    @required this.onChangedSpan,
   })  : assert(controller != null),
         assert(focusNode != null),
         assert(autocorrect != null),
@@ -257,9 +256,6 @@ class RichEditableText extends StatefulWidget {
 
   /// Called when the text being edited changes.
   final ValueChanged<String> onChanged;
-
-  /// Called when the text being edited changes.
-  final ValueChanged<TextSpan> onChangedSpan;
 
   /// Called when the user indicates that they are done editing the text in the field.
   final ValueChanged<String> onSubmitted;
@@ -413,7 +409,9 @@ class RichEditableTextState extends State<RichEditableText>
     if (!_editingValue.remotelyEdited) {
       _lastKnownRemoteTextEditingValue = _editingValue;
     }
-    //_formatAndSetValue(value, textChanged);
+    
+    if (textChanged && widget.onChanged != null)
+      widget.onChanged(value.text);
   }
 
   @override

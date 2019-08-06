@@ -85,7 +85,6 @@ class RichTextField extends StatefulWidget {
     this.maxLines: 1,
     this.onChanged,
     this.onSubmitted, 
-    @required this.onChangedSpan,
   })
       : assert(richTextEditingValueParser != null),
         assert(keyboardType != null),
@@ -164,9 +163,6 @@ class RichTextField extends StatefulWidget {
 
   /// Called when the text being edited changes.
   final ValueChanged<String> onChanged;
-
-  /// Called when the text being edited changes.
-  final ValueChanged<TextSpan> onChangedSpan;
 
   /// Called when the user indicates that they are done editing the text in the
   /// field.
@@ -283,7 +279,6 @@ class RichTextFieldState extends State<RichTextField> {
           cursorColor: widget.cursorColor == null ? themeData.cursorColor : widget.cursorColor,
           selectionColor: themeData.textSelectionColor,
           onChanged: widget.onChanged,
-          onChangedSpan: widget.onChangedSpan,
           onSubmitted: widget.onSubmitted,
           onSelectionChanged: (TextSelection selection, bool longPress) =>
               _onSelectionChanged(context, selection, longPress)),

@@ -74,21 +74,14 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
                           richTextEditingValueParser:
                               DummyParser(), //replace this with your parser implementation
                           key: _richTextFieldState,
-                          onChangedSpan: (span) {},
                           onChanged: (t) {
-                            print(t);                            
+                            print("text: ");
+                            print(t);
                           },
                           maxLines: null,
                           decoration: null,
                           autofocus: true,
                           style: TextStyle(fontSize: 16.0, color: Colors.black),
-                        ),
-                        TextField(
-                          key: Key(tbKey.toString()),
-                          autofocus: false,
-                          decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(6.0))),
                         ),
                       ],
                     )),
