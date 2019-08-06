@@ -1,3 +1,5 @@
+## [0.1.2] - 6th August 2019
+* Remotely edited change reflection fix
 ## [0.1.1] - 5th August 2019
 * Removed lower level dependencies on TextInputClient.
 * Fixed issue related to other TextFields getting unfunctional.
