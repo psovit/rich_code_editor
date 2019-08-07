@@ -1,4 +1,4 @@
-## [0.1.23] - 7th August 2019
+## [0.1.3] - 7th August 2019
 * Reduce calls to TextInputConnection setEditingState
 ## [0.1.22] - 7th August 2019
 * Some fixes for remote editing value update
