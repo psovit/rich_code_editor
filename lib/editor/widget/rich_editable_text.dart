@@ -384,6 +384,7 @@ class RichEditableTextState extends State<RichEditableText>
 
   @override
   void updateEditingValue(TextEditingValue value) {
+    if (!_hasInputConnection) return;
     bool textChanged = value.text != _editingValue.value.text;
 
     _lastKnownRemoteTextEditingValue = _editingValue;
@@ -408,6 +409,10 @@ class RichEditableTextState extends State<RichEditableText>
           oldValue: _editingValue.copyWith(),
           newValue: newValue,
           style: _currentSelectedStyle.copyWith());
+
+      if (!_editingValue.remotelyEdited) {
+        _lastKnownRemoteTextEditingValue = _editingValue;
+      }
 
       _updateRemoteEditingValueIfNeeded();
 
