@@ -385,33 +385,34 @@ class RichEditableTextState extends State<RichEditableText>
   @override
   void updateEditingValue(TextEditingValue value) {
     bool textChanged = value.text != _editingValue.value.text;
-    if (!textChanged) return;
-    var newValue = new RichTextEditingValue(
-      value: new TextSpan(text: value.text, style: widget.style),
-      selection: new TextSelection(
-        baseOffset: value.selection.baseOffset ?? -1,
-        extentOffset: value.selection.extentOffset ?? -1,
-        affinity: TextAffinity.downstream,
-        isDirectional: value.selection.isDirectional ?? false,
-      ),
-      composing: new TextRange(
-        start: value.composing.start ?? -1,
-        end: value.composing.end ?? -1,
-      ),
-      remotelyEdited: false,
-    );
 
-    _editingValue = _richTextEditingValueParser.parse(
-        oldValue: _editingValue.copyWith(),
-        newValue: newValue,
-        style: _currentSelectedStyle.copyWith());
+    _lastKnownRemoteTextEditingValue = _editingValue;
 
-    if (!_editingValue.remotelyEdited) {
-      _lastKnownRemoteTextEditingValue = _editingValue;
+    if (textChanged) {
+      var newValue = new RichTextEditingValue(
+        value: new TextSpan(text: value.text, style: widget.style),
+        selection: new TextSelection(
+          baseOffset: value.selection.baseOffset ?? -1,
+          extentOffset: value.selection.extentOffset ?? -1,
+          affinity: TextAffinity.downstream,
+          isDirectional: value.selection.isDirectional ?? false,
+        ),
+        composing: new TextRange(
+          start: value.composing.start ?? -1,
+          end: value.composing.end ?? -1,
+        ),
+        remotelyEdited: false,
+      );
+
+      _editingValue = _richTextEditingValueParser.parse(
+          oldValue: _editingValue.copyWith(),
+          newValue: newValue,
+          style: _currentSelectedStyle.copyWith());
+
+      _updateRemoteEditingValueIfNeeded();
+
+      if (widget.onChanged != null) widget.onChanged(value.text);
     }
-    
-    if (textChanged && widget.onChanged != null)
-      widget.onChanged(value.text);
   }
 
   @override
