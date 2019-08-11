@@ -1,3 +1,5 @@
+## [0.1.32] - 7th August 2019
+* Reduce further calls to updateEditing value & TextInputConnection setEditingState
 ## [0.1.31] - 7th August 2019
 * Reduce calls to TextInputConnection setEditingState
 ## [0.1.22] - 7th August 2019
