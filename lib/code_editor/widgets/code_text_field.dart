@@ -630,7 +630,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     if (cause == SelectionChangedCause.longPress)
       return true;
 
-    if (_effectiveController.text.isNotEmpty)
+    if (_effectiveController.textSpan.text.isNotEmpty)
       return true;
 
     return false;
@@ -996,7 +996,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     return Semantics(
       onTap: () {
         if (!_effectiveController.selection.isValid)
-          _effectiveController.selection = TextSelection.collapsed(offset: _effectiveController.text.length);
+          _effectiveController.selection = TextSelection.collapsed(offset: _effectiveController.textSpan.text.length);
         _requestKeyboard();
       },
       child: Listener(
