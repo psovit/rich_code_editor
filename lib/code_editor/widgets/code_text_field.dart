@@ -490,7 +490,7 @@ class CodeTextField extends StatefulWidget {
   final ScrollController scrollController;
 
   @override
-  _CodeTextFieldState createState() => _CodeTextFieldState();
+  CodeTextFieldState createState() => CodeTextFieldState();
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
@@ -525,7 +525,7 @@ class CodeTextField extends StatefulWidget {
   }
 }
 
-class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveClientMixin {
+class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveClientMixin {
   final GlobalKey<CodeEditableTextState> _codeEditableTextKey = GlobalKey<CodeEditableTextState>();
 
   Set<InteractiveInkFeature> _splashes;
