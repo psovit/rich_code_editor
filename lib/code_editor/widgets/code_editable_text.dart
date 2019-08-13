@@ -1686,7 +1686,9 @@ class CodeEditableTextState extends State<CodeEditableText>
   @override
   set textEditingValue(TextEditingValue value) {
     var ts = TextSpan(text: value.text, style: widget.style);
-    _value = _value.copyWith(value: ts);
+    _value = _value.copyWith(value: ts, selection: cs.TextSelection.fromPosition(cs.TextPosition(
+      offset: value.text.length
+    )));
   }
 }
 
