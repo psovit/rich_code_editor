@@ -13,6 +13,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/widgets.dart' hide TextSelectionOverlay;
+import 'package:rich_code_editor/code_editor/code_highlighter.dart';
 import 'package:rich_code_editor/code_editor/widgets/code_editable.dart' as ce;
 import 'package:rich_code_editor/code_editor/widgets/code_editing_value.dart';
 import 'package:rich_code_editor/code_editor/widgets/code_selection.dart' as cs;
@@ -931,10 +932,9 @@ class CodeEditableTextState extends State<CodeEditableText>
 
   _toTextEditingValue(CodeEditingValue codeEditingValue) {
     return TextEditingValue(
-      text: codeEditingValue.text,
-      composing: codeEditingValue.composing,
-      selection: codeEditingValue.selection 
-    );
+        text: codeEditingValue.text,
+        composing: codeEditingValue.composing,
+        selection: codeEditingValue.selection);
   }
 
   @override
@@ -1000,19 +1000,19 @@ class CodeEditableTextState extends State<CodeEditableText>
     }
 
     var newValue = new CodeEditingValue(
-        value: new TextSpan(text: value.text, style: widget.style),
-        selection: new TextSelection(
-          baseOffset: value.selection.baseOffset ?? -1,
-          extentOffset: value.selection.extentOffset ?? -1,
-          affinity: TextAffinity.downstream,
-          isDirectional: value.selection.isDirectional ?? false,
-        ),
-        composing: new TextRange(
-          start: value.composing.start ?? -1,
-          end: value.composing.end ?? -1,
-        ),
-        remotelyEdited: false,
-      );
+      value: new TextSpan(text: value.text, style: widget.style),
+      selection: new TextSelection(
+        baseOffset: value.selection.baseOffset ?? -1,
+        extentOffset: value.selection.extentOffset ?? -1,
+        affinity: TextAffinity.downstream,
+        isDirectional: value.selection.isDirectional ?? false,
+      ),
+      composing: new TextRange(
+        start: value.composing.start ?? -1,
+        end: value.composing.end ?? -1,
+      ),
+      remotelyEdited: false,
+    );
 
     _lastKnownRemoteCodeEditingValue = newValue;
     _formatAndSetValue(newValue);
@@ -1396,16 +1396,11 @@ class CodeEditableTextState extends State<CodeEditableText>
   }
 
   void _formatAndSetValue(CodeEditingValue value) {
+    var dh = DummyHighlighter();
     final bool textChanged = _value?.text != value?.text;
-    if (textChanged &&
-        widget.inputFormatters != null &&
-        widget.inputFormatters.isNotEmpty) {
-      // for (TextInputFormatter formatter in widget.inputFormatters)
-      //   value = formatter.formatEditUpdate(_value, value);
-      _value = value;
+    if (textChanged) {
+      _value = dh.parse(oldValue: _value, newValue: value, style: widget.style);
       _updateRemoteEditingValueIfNeeded();
-    } else {
-      _value = value;
     }
     if (textChanged && widget.onChanged != null) widget.onChanged(value.text);
   }
@@ -1639,7 +1634,7 @@ class CodeEditableTextState extends State<CodeEditableText>
             onPaste: _semanticsOnPaste(controls),
             child: _Editable(
               key: _editableKey,
-              textSpan: buildTextSpan(),
+              textSpan: _value.value,
               value: _value,
               cursorColor: _cursorColor,
               backgroundCursorColor: widget.backgroundCursorColor,
@@ -1677,43 +1672,13 @@ class CodeEditableTextState extends State<CodeEditableText>
     );
   }
 
-  /// Builds [TextSpan] from current editing value.
-  ///
-  /// By default makes text in composing range appear as underlined.
-  /// Descendants can override this method to customize appearance of text.
-  TextSpan buildTextSpan() {
-    // Read only mode should not paint text composing.
-    if (!widget.obscureText && _value.composing.isValid && !widget.readOnly) {
-      final TextStyle composingStyle = widget.style.merge(
-        const TextStyle(decoration: TextDecoration.underline),
-      );
-      return TextSpan(style: widget.style, children: <TextSpan>[
-        TextSpan(text: _value.composing.textBefore(_value.text)),
-        TextSpan(
-          style: composingStyle,
-          text: _value.composing.textInside(_value.text),
-        ),
-        TextSpan(text: _value.composing.textAfter(_value.text)),
-      ]);
-    }
-
-    String text = _value.text;
-    if (widget.obscureText) {
-      text = ce.RenderEditableCode.obscuringCharacter * text.length;
-      final int o =
-          _obscureShowCharTicksPending > 0 ? _obscureLatestCharIndex : null;
-      if (o != null && o >= 0 && o < text.length)
-        text = text.replaceRange(o, o + 1, _value.text.substring(o, o + 1));
-    }
-    return TextSpan(style: widget.style, text: text);
-  }
-
   @override
   TextEditingValue get textEditingValue => _toTextEditingValue(_value);
 
   @override
   set textEditingValue(TextEditingValue value) {
-    textEditingValue = value;
+    var ts = TextSpan(text: value.text, style: widget.style);
+    _value = _value.copyWith(value: ts);
   }
 }
 
@@ -1784,7 +1749,7 @@ class _Editable extends LeafRenderObjectWidget {
   @override
   ce.RenderEditableCode createRenderObject(BuildContext context) {
     return ce.RenderEditableCode(
-      text: textSpan,
+      text: _styledTextSpan,
       cursorColor: cursorColor,
       backgroundCursorColor: backgroundCursorColor,
       showCursor: showCursor,
@@ -1815,7 +1780,8 @@ class _Editable extends LeafRenderObjectWidget {
   }
 
   @override
-  void updateRenderObject(BuildContext context, ce.RenderEditableCode renderObject) {
+  void updateRenderObject(
+      BuildContext context, ce.RenderEditableCode renderObject) {
     renderObject
       ..text = textSpan
       ..cursorColor = cursorColor
@@ -1842,5 +1808,13 @@ class _Editable extends LeafRenderObjectWidget {
       ..textSelectionDelegate = textSelectionDelegate
       ..devicePixelRatio = devicePixelRatio
       ..paintCursorAboveText = paintCursorAboveText;
+  }
+
+  TextSpan get _styledTextSpan {
+    if (value.composing.isValid) {
+      return value.value;
+    }
+
+    return value.value;
   }
 }

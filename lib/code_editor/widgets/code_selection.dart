@@ -13,7 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:rich_code_editor/code_editor/widgets/code_editable.dart' as ce;
 
-export 'package:flutter/services.dart' show TextSelectionDelegate;
+export 'package:flutter/services.dart' hide TextSelectionDelegate;
 
 /// A duration that controls how often the drag selection update callback is
 /// called.
@@ -211,7 +211,6 @@ abstract class TextSelectionControls {
   /// This function is asynchronous since interacting with the clipboard is
   /// asynchronous. Race conditions may exist with this API as currently
   /// implemented.
-  // TODO(ianh): https://github.com/flutter/flutter/issues/11427
   Future<void> handlePaste(TextSelectionDelegate delegate) async {
     final TextEditingValue value = delegate.textEditingValue; // Snapshot the input before using `await`.
     final ClipboardData data = await Clipboard.getData(Clipboard.kTextPlain);
@@ -1076,7 +1075,6 @@ class _TextSelectionGestureDetectorState extends State<TextSelectionGestureDetec
     if (widget.onDragSelectionStart != null ||
         widget.onDragSelectionUpdate != null ||
         widget.onDragSelectionEnd != null) {
-      // TODO(mdebbar): Support dragging in any direction (for multiline text).
       // https://github.com/flutter/flutter/issues/28676
       gestures[HorizontalDragGestureRecognizer] = GestureRecognizerFactoryWithHandlers<HorizontalDragGestureRecognizer>(
         () => HorizontalDragGestureRecognizer(debugOwner: this, kind: PointerDeviceKind.mouse),

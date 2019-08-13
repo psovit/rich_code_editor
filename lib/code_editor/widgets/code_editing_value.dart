@@ -63,18 +63,9 @@ class CodeEditingValue {
 
   @override
   int get hashCode => hashValues(
+        value.hashCode,
         text.hashCode,
         selection.hashCode,
         composing.hashCode,
       );
-}
-
-TextAffinity _toTextAffinity(String affinity) {
-  switch (affinity) {
-    case 'TextAffinity.downstream':
-      return TextAffinity.downstream;
-    case 'TextAffinity.upstream':
-      return TextAffinity.upstream;
-  }
-  return null;
 }
