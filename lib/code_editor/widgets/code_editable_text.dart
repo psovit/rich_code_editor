@@ -8,21 +8,22 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/rendering.dart' show ViewportOffset, RenderEditable;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
-import 'package:flutter/widgets.dart';
+import 'package:flutter/widgets.dart' hide TextSelectionOverlay;
+import 'package:rich_code_editor/code_editor/widgets/code_editable.dart' as ce;
 import 'package:rich_code_editor/code_editor/widgets/code_editing_value.dart';
+import 'package:rich_code_editor/code_editor/widgets/code_selection.dart' as cs;
 import 'package:rich_code_editor/editor/utils/extensions.dart';
 
 export 'package:flutter/services.dart' show TextSelection, TextInputType;
-export 'package:flutter/rendering.dart' show SelectionChangedCause;
 
 /// Signature for the callback that reports when the user changes the selection
 /// (including the cursor location).
 typedef SelectionChangedCallback = void Function(
-    TextSelection selection, SelectionChangedCause cause);
+    TextSelection selection, ce.SelectionChangedCause cause);
 
 // The time it takes for the cursor to fade from fully opaque to fully
 // transparent and vice versa. A full cursor blink, from transparent to opaque
@@ -627,7 +628,7 @@ class CodeEditableText extends StatefulWidget {
   ///  * [TextField], a Material Design themed wrapper of [CodeEditableText], which
   ///    shows the selection toolbar upon appropriate user events based on the
   ///    user's platform set in [ThemeData.platform].
-  final TextSelectionControls selectionControls;
+  final cs.TextSelectionControls selectionControls;
 
   /// {@template flutter.widgets.CodeEditableText.keyboardType}
   /// The type of keyboard to use for editing the text.
@@ -861,7 +862,7 @@ class CodeEditableTextState extends State<CodeEditableText>
   final GlobalKey _editableKey = GlobalKey();
 
   TextInputConnection _textInputConnection;
-  TextSelectionOverlay _selectionOverlay;
+  cs.TextSelectionOverlay _selectionOverlay;
 
   ScrollController _scrollController;
 
@@ -1118,7 +1119,7 @@ class CodeEditableTextState extends State<CodeEditableText>
         _handleSelectionChanged(
             TextSelection.collapsed(offset: _lastTextPosition.offset),
             renderEditable,
-            SelectionChangedCause.forcePress);
+            ce.SelectionChangedCause.forcePress);
       _startCaretRect = null;
       _lastTextPosition = null;
       _pointOffsetOrigin = null;
@@ -1281,7 +1282,7 @@ class CodeEditableTextState extends State<CodeEditableText>
   }
 
   void _handleSelectionChanged(TextSelection selection,
-      RenderEditable renderObject, SelectionChangedCause cause) {
+      ce.RenderEditableCode renderObject, ce.SelectionChangedCause cause) {
     widget.controller.selection = selection;
 
     // This will show the keyboard for all selection changes on the
@@ -1291,7 +1292,7 @@ class CodeEditableTextState extends State<CodeEditableText>
     _hideSelectionOverlayIfNeeded();
 
     if (widget.selectionControls != null) {
-      _selectionOverlay = TextSelectionOverlay(
+      _selectionOverlay = cs.TextSelectionOverlay(
         context: context,
         value: _toTextEditingValue(_value),
         debugRequiredFor: widget,
@@ -1360,7 +1361,7 @@ class CodeEditableTextState extends State<CodeEditableText>
         );
         final Offset anchor =
             _selectionOverlay.selectionControls.getHandleAnchor(
-          TextSelectionHandleType.collapsed,
+          cs.TextSelectionHandleType.collapsed,
           renderEditable.preferredLineHeight,
         );
         final double handleCenter = handleHeight / 2 - anchor.dy;
@@ -1429,7 +1430,7 @@ class CodeEditableTextState extends State<CodeEditableText>
 
   /// The current status of the text selection handles.
   @visibleForTesting
-  TextSelectionOverlay get selectionOverlay => _selectionOverlay;
+  cs.TextSelectionOverlay get selectionOverlay => _selectionOverlay;
 
   int _obscureShowCharTicksPending = 0;
   int _obscureLatestCharIndex;
@@ -1540,7 +1541,7 @@ class CodeEditableTextState extends State<CodeEditableText>
   ///
   /// This property is typically used to notify the renderer of input gestures
   /// when [ignorePointer] is true. See [RenderEditable.ignorePointer].
-  RenderEditable get renderEditable =>
+  ce.RenderEditableCode get renderEditable =>
       _editableKey.currentContext.findRenderObject();
 
   @override
@@ -1589,7 +1590,7 @@ class CodeEditableTextState extends State<CodeEditableText>
     }
   }
 
-  VoidCallback _semanticsOnCopy(TextSelectionControls controls) {
+  VoidCallback _semanticsOnCopy(cs.TextSelectionControls controls) {
     return widget.selectionEnabled &&
             copyEnabled &&
             _hasFocus &&
@@ -1598,7 +1599,7 @@ class CodeEditableTextState extends State<CodeEditableText>
         : null;
   }
 
-  VoidCallback _semanticsOnCut(TextSelectionControls controls) {
+  VoidCallback _semanticsOnCut(cs.TextSelectionControls controls) {
     return widget.selectionEnabled &&
             cutEnabled &&
             _hasFocus &&
@@ -1607,7 +1608,7 @@ class CodeEditableTextState extends State<CodeEditableText>
         : null;
   }
 
-  VoidCallback _semanticsOnPaste(TextSelectionControls controls) {
+  VoidCallback _semanticsOnPaste(cs.TextSelectionControls controls) {
     return widget.selectionEnabled &&
             pasteEnabled &&
             _hasFocus &&
@@ -1622,7 +1623,7 @@ class CodeEditableTextState extends State<CodeEditableText>
     _focusAttachment.reparent();
     super.build(context); // See AutomaticKeepAliveClientMixin.
 
-    final TextSelectionControls controls = widget.selectionControls;
+    final cs.TextSelectionControls controls = widget.selectionControls;
     return Scrollable(
       excludeFromSemantics: true,
       axisDirection: _isMultiline ? AxisDirection.down : AxisDirection.right,
@@ -1698,7 +1699,7 @@ class CodeEditableTextState extends State<CodeEditableText>
 
     String text = _value.text;
     if (widget.obscureText) {
-      text = RenderEditable.obscuringCharacter * text.length;
+      text = ce.RenderEditableCode.obscuringCharacter * text.length;
       final int o =
           _obscureShowCharTicksPending > 0 ? _obscureLatestCharIndex : null;
       if (o != null && o >= 0 && o < text.length)
@@ -1769,8 +1770,8 @@ class _Editable extends LeafRenderObjectWidget {
   final bool obscureText;
   final bool autocorrect;
   final ViewportOffset offset;
-  final SelectionChangedHandler onSelectionChanged;
-  final CaretChangedHandler onCaretChanged;
+  final ce.SelectionChangedHandler onSelectionChanged;
+  final ce.CaretChangedHandler onCaretChanged;
   final bool rendererIgnoresPointer;
   final double cursorWidth;
   final Radius cursorRadius;
@@ -1781,8 +1782,8 @@ class _Editable extends LeafRenderObjectWidget {
   final bool paintCursorAboveText;
 
   @override
-  RenderEditable createRenderObject(BuildContext context) {
-    return RenderEditable(
+  ce.RenderEditableCode createRenderObject(BuildContext context) {
+    return ce.RenderEditableCode(
       text: textSpan,
       cursorColor: cursorColor,
       backgroundCursorColor: backgroundCursorColor,
@@ -1814,7 +1815,7 @@ class _Editable extends LeafRenderObjectWidget {
   }
 
   @override
-  void updateRenderObject(BuildContext context, RenderEditable renderObject) {
+  void updateRenderObject(BuildContext context, ce.RenderEditableCode renderObject) {
     renderObject
       ..text = textSpan
       ..cursorColor = cursorColor

@@ -5,12 +5,14 @@
 import 'dart:collection';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/material.dart' hide materialTextSelectionControls;
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/widgets.dart' hide TextSelectionControls;
+import 'package:rich_code_editor/code_editor/widgets/code_selection.dart' as cs;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:rich_code_editor/code_editor/widgets/code_editable.dart' as ce;
+import 'package:rich_code_editor/code_editor/widgets/material_selection.dart' as ms;
 
 import 'code_editable_text.dart';
 
@@ -518,7 +520,7 @@ class CodeTextField extends StatefulWidget {
 }
 
 class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveClientMixin {
-  final GlobalKey<CodeEditableTextState> _CodeEditableTextKey = GlobalKey<CodeEditableTextState>();
+  final GlobalKey<CodeEditableTextState> _codeEditableTextKey = GlobalKey<CodeEditableTextState>();
 
   Set<InteractiveInkFeature> _splashes;
   InteractiveInkFeature _currentSplash;
@@ -609,13 +611,13 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     super.dispose();
   }
 
-  CodeEditableTextState get _CodeEditableText => _CodeEditableTextKey.currentState;
+  CodeEditableTextState get _codeEditableText => _codeEditableTextKey.currentState;
 
   void _requestKeyboard() {
-    _CodeEditableText?.requestKeyboard();
+    _codeEditableText?.requestKeyboard();
   }
 
-  bool _shouldShowSelectionHandles(SelectionChangedCause cause) {
+  bool _shouldShowSelectionHandles(ce.SelectionChangedCause cause) {
     // When the text field is activated by something that doesn't trigger the
     // selection overlay, we shouldn't show the handles either.
     if (!_shouldShowSelectionToolbar)
@@ -636,7 +638,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     return false;
   }
 
-  void _handleSelectionChanged(TextSelection selection, SelectionChangedCause cause) {
+  void _handleSelectionChanged(TextSelection selection, ce.SelectionChangedCause cause) {
     final bool willShowSelectionHandles = _shouldShowSelectionHandles(cause);
     if (willShowSelectionHandles != _showSelectionHandles) {
       setState(() {
@@ -647,7 +649,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     switch (Theme.of(context).platform) {
       case TargetPlatform.iOS:
         if (cause == SelectionChangedCause.longPress) {
-          _CodeEditableText?.bringIntoView(selection.base);
+          _codeEditableText?.bringIntoView(selection.base);
         }
         return;
       case TargetPlatform.android:
@@ -659,14 +661,14 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
   /// Toggle the toolbar when a selection handle is tapped.
   void _handleSelectionHandleTapped() {
     if (_effectiveController.selection.isCollapsed) {
-      _CodeEditableText.toggleToolbar();
+      _codeEditableText.toggleToolbar();
     }
   }
 
   InteractiveInkFeature _createInkFeature(Offset globalPosition) {
     final MaterialInkController inkController = Material.of(context);
     final ThemeData themeData = Theme.of(context);
-    final BuildContext editableContext = _CodeEditableTextKey.currentContext;
+    final BuildContext editableContext = _codeEditableTextKey.currentContext;
     final RenderBox referenceBox = InputDecorator.containerOf(editableContext) ?? editableContext.findRenderObject();
     final Offset position = referenceBox.globalToLocal(globalPosition);
     final Color color = themeData.splashColor;
@@ -697,7 +699,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     return splash;
   }
 
-  RenderEditable get _renderEditable => _CodeEditableTextKey.currentState.renderEditable;
+  ce.RenderEditableCode get _renderEditable => _codeEditableTextKey.currentState.renderEditable;
 
   void _handleTapDown(TapDownDetails details) {
     _renderEditable.handleTapDown(details);
@@ -718,10 +720,10 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     if (widget.selectionEnabled) {
       _renderEditable.selectWordsInRange(
         from: details.globalPosition,
-        cause: SelectionChangedCause.forcePress,
+        cause: ce.SelectionChangedCause.forcePress,
       );
       if (_shouldShowSelectionToolbar) {
-        _CodeEditableTextKey.currentState.showToolbar();
+        _codeEditableTextKey.currentState.showToolbar();
       }
     }
   }
@@ -730,11 +732,11 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     if (widget.selectionEnabled) {
       switch (Theme.of(context).platform) {
         case TargetPlatform.iOS:
-          _renderEditable.selectWordEdge(cause: SelectionChangedCause.tap);
+          _renderEditable.selectWordEdge(cause: ce.SelectionChangedCause.tap);
           break;
         case TargetPlatform.android:
         case TargetPlatform.fuchsia:
-          _renderEditable.selectPosition(cause: SelectionChangedCause.tap);
+          _renderEditable.selectPosition(cause: ce.SelectionChangedCause.tap);
           break;
       }
     }
@@ -754,12 +756,12 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
         case TargetPlatform.iOS:
           _renderEditable.selectPositionAt(
             from: details.globalPosition,
-            cause: SelectionChangedCause.longPress,
+            cause: ce.SelectionChangedCause.longPress,
           );
           break;
         case TargetPlatform.android:
         case TargetPlatform.fuchsia:
-          _renderEditable.selectWord(cause: SelectionChangedCause.longPress);
+          _renderEditable.selectWord(cause: ce.SelectionChangedCause.longPress);
           Feedback.forLongPress(context);
           break;
       }
@@ -773,7 +775,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
         case TargetPlatform.iOS:
           _renderEditable.selectPositionAt(
             from: details.globalPosition,
-            cause: SelectionChangedCause.longPress,
+            cause: ce.SelectionChangedCause.longPress,
           );
           break;
         case TargetPlatform.android:
@@ -781,7 +783,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
           _renderEditable.selectWordsInRange(
             from: details.globalPosition - details.offsetFromOrigin,
             to: details.globalPosition,
-            cause: SelectionChangedCause.longPress,
+            cause: ce.SelectionChangedCause.longPress,
           );
           break;
       }
@@ -791,15 +793,15 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
   void _handleSingleLongTapEnd(LongPressEndDetails details) {
     if (widget.selectionEnabled) {
       if (_shouldShowSelectionToolbar)
-        _CodeEditableTextKey.currentState.showToolbar();
+        _codeEditableTextKey.currentState.showToolbar();
     }
   }
 
   void _handleDoubleTapDown(TapDownDetails details) {
     if (widget.selectionEnabled) {
-      _renderEditable.selectWord(cause: SelectionChangedCause.doubleTap);
+      _renderEditable.selectWord(cause: ce.SelectionChangedCause.doubleTap);
       if (_shouldShowSelectionToolbar) {
-        _CodeEditableText.showToolbar();
+        _codeEditableText.showToolbar();
       }
     }
   }
@@ -807,7 +809,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
   void _handleMouseDragSelectionStart(DragStartDetails details) {
     _renderEditable.selectPositionAt(
       from: details.globalPosition,
-      cause: SelectionChangedCause.drag,
+      cause: ce.SelectionChangedCause.drag,
     );
     _startSplash(details.globalPosition);
   }
@@ -819,7 +821,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     _renderEditable.selectPositionAt(
       from: startDetails.globalPosition,
       to: updateDetails.globalPosition,
-      cause: SelectionChangedCause.drag,
+      cause: ce.SelectionChangedCause.drag,
     );
   }
 
@@ -892,7 +894,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
       formatters.add(LengthLimitingTextInputFormatter(widget.maxLength));
 
     bool forcePressEnabled;
-    TextSelectionControls textSelectionControls;
+    cs.TextSelectionControls textSelectionControls;
     bool paintCursorAboveText;
     bool cursorOpacityAnimates;
     Offset cursorOffset;
@@ -902,7 +904,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     switch (themeData.platform) {
       case TargetPlatform.iOS:
         forcePressEnabled = true;
-        textSelectionControls = cupertinoTextSelectionControls;
+        textSelectionControls = textSelectionControls;
         paintCursorAboveText = true;
         cursorOpacityAnimates = true;
         cursorColor ??= CupertinoTheme.of(context).primaryColor;
@@ -920,7 +922,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
         forcePressEnabled = false;
-        textSelectionControls = materialTextSelectionControls;
+        textSelectionControls = ms.materialTextSelectionControls;
         paintCursorAboveText = false;
         cursorOpacityAnimates = false;
         cursorColor ??= themeData.cursorColor;
@@ -929,7 +931,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
 
     Widget child = RepaintBoundary(
       child: CodeEditableText(
-        key: _CodeEditableTextKey,
+        key: _codeEditableTextKey,
         readOnly: widget.readOnly,
         showCursor: widget.showCursor,
         showSelectionHandles: _showSelectionHandles,
