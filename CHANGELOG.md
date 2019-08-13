@@ -1,3 +1,6 @@
+## [0.2.0] - 13th August 2019
+* Re-created most of the underlying classes/widgets
+* 99% Naming changes
 ## [0.1.32] - 7th August 2019
 * Reduce further calls to updateEditing value & TextInputConnection setEditingState
 ## [0.1.31] - 7th August 2019
