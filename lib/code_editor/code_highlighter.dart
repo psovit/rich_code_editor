@@ -1,27 +1,27 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
-import 'package:rich_code_editor/editor/keyboard/input_client.dart';
+import 'package:rich_code_editor/code_editor/widgets/code_editing_value.dart';
 
 // This is the interface that must be implemented by Syntax highlighter's for each programming language
-abstract class RichTextEditingValueParserBase {
-  RichTextEditingValue parse(
-      {@required RichTextEditingValue oldValue,
-      @required RichTextEditingValue newValue,
+abstract class CodeEditingValueHighlighterBase {
+  CodeEditingValue parse(
+      {@required CodeEditingValue oldValue,
+      @required CodeEditingValue newValue,
       @required TextStyle style});
 }
 
 // This is a dummy implementation of syntax highlighter
 // Highlights a different color for every other word.
-class DummyParser implements RichTextEditingValueParserBase {
+class DummyHighlighter implements CodeEditingValueHighlighterBase {
   var _totalOffset = 0;
   var kCodeStyle = TextStyle(fontSize: 16.0, color: Colors.green);
   var plainStyle = TextStyle(fontSize: 16.0, color: Colors.black);
 
   @override
-  RichTextEditingValue parse(
-      {@required RichTextEditingValue oldValue,
-      @required RichTextEditingValue newValue,
+  CodeEditingValue parse(
+      {@required CodeEditingValue oldValue,
+      @required CodeEditingValue newValue,
       @required TextStyle style}) {
     if (_equalTextValue(oldValue, newValue)) {
       return oldValue;
@@ -52,14 +52,14 @@ class DummyParser implements RichTextEditingValueParserBase {
     return newValue;
   }
 
-  static bool _equalTextValue(RichTextEditingValue a, RichTextEditingValue b) {
+  static bool _equalTextValue(CodeEditingValue a, CodeEditingValue b) {
     return a.value.toPlainText() == b.value.toPlainText() &&
         a.selection == b.selection &&
         a.composing == b.composing;
   }
 
   bool _enterPressed(
-      RichTextEditingValue oldValue, RichTextEditingValue newValue) {
+      CodeEditingValue oldValue, CodeEditingValue newValue) {
     if (newValue.text.length == 1) {
       return (newValue.text == "\n");
     }
@@ -77,20 +77,20 @@ class DummyParser implements RichTextEditingValueParserBase {
   }
 
   bool _backSpacePressed(
-      RichTextEditingValue oldValue, RichTextEditingValue newValue) {
+      CodeEditingValue oldValue, CodeEditingValue newValue) {
     final TextSelection newSelection = newValue.selection;
     final TextSelection currentSelection = oldValue.selection;
 
     return currentSelection.baseOffset > newSelection.baseOffset;
   }
 
-  bool _sameTextDiffSelection(RichTextEditingValue a, RichTextEditingValue b) {
+  bool _sameTextDiffSelection(CodeEditingValue a, CodeEditingValue b) {
     return a.value.toPlainText() == b.value.toPlainText() &&
         (a.selection != b.selection || a.composing != b.composing);
   }
 
-  RichTextEditingValue addTextRemotely(
-    RichTextEditingValue oldValue,
+  CodeEditingValue addTextRemotely(
+    CodeEditingValue oldValue,
     String newText,
   ) {
     final TextSelection currentSelection = oldValue.selection;

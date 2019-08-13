@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rich_code_editor/rich_code_editor.dart';
+import 'package:rich_code_editor/code_editor/widgets/code_text_field.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -32,12 +33,12 @@ class DemoCodeEditor extends StatefulWidget {
 }
 
 class _DemoCodeEditorState extends State<DemoCodeEditor> {
-  GlobalKey<RichTextFieldState> _richTextFieldState =
-      new GlobalKey<RichTextFieldState>();
+  // GlobalKey<RichTextFieldState> _richTextFieldState =
+  //     new GlobalKey<RichTextFieldState>();
 
   @override
   void dispose() {
-    _richTextFieldState.currentState?.dispose();
+    //_richTextFieldState.currentState?.dispose();
     super.dispose();
   }
 
@@ -70,14 +71,13 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
                         }
                       },
                       children: <Widget>[
-                        new RichTextField(
-                          richTextEditingValueParser:
-                              DummyParser(), //replace this with your parser implementation
-                          key: _richTextFieldState,
+                        new CodeTextField(
+                          highlighter: DummyHighlighter(), 
                           onChanged: (t) {
                             print("text: ");
                             print(t);
                           },
+                          controller: CodeEditingController(),
                           maxLines: null,
                           decoration: null,
                           autofocus: true,
