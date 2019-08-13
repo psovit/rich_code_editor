@@ -9,6 +9,11 @@ abstract class CodeEditingValueHighlighterBase {
       {@required CodeEditingValue oldValue,
       @required CodeEditingValue newValue,
       @required TextStyle style});
+
+  /// Returns the [TextSpan] along with it's [index] in the spans list 
+  /// that contains the given position in the text.
+  /// Pass [oldValue.value] & [oldValue.selection.baseOffset] as params here.
+  Map<int, TextSpan> getSpanForPosition(TextSpan parent, int targetOffset);
 }
 
 // This is a dummy implementation of syntax highlighter
@@ -158,5 +163,11 @@ class DummyHighlighter implements CodeEditingValueHighlighterBase {
     }
 
     return ls;
+  }
+
+  @override
+  Map<int, TextSpan> getSpanForPosition(TextSpan parent, int targetOffset) {
+    // TODO: implement getSpanForPosition
+    return null;
   }
 }

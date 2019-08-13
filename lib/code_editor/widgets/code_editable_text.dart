@@ -1289,9 +1289,29 @@ class CodeEditableTextState extends State<CodeEditableText>
     }
   }
 
+  /// If user tried to move the cursor to a tabbed space, 
+  /// push it to next available text's begining position.
+  _resetSelectionPoint(int baseOffset) {
+    if(widget.controller.value.value.children != null) {
+      
+      var mapItem =_highlighter.getSpanForPosition(widget.controller.value.value, baseOffset);
+
+      if(mapItem != null) {
+        var tabbedSpace = "    ";
+        if(mapItem.values.first.text == tabbedSpace) {
+          var afterBaseText = widget.controller.value.text.substring(baseOffset);
+          var nextWordOffset = afterBaseText.length - afterBaseText.trimLeft().length;
+          baseOffset = baseOffset + nextWordOffset;
+        }
+      }
+
+      return TextSelection.fromPosition(TextPosition(offset: baseOffset));
+    }
+  }
+
   void _handleSelectionChanged(TextSelection selection,
       ce.RenderEditableCode renderObject, ce.SelectionChangedCause cause) {
-    widget.controller.selection = selection;
+    widget.controller.selection = _resetSelectionPoint(selection.baseOffset);
 
     // This will show the keyboard for all selection changes on the
     // EditableWidget, not just changes triggered by user gestures.
@@ -1406,8 +1426,8 @@ class CodeEditableTextState extends State<CodeEditableText>
   void _formatAndSetValue(CodeEditingValue value) {
     final bool textChanged = _value?.text != value?.text;
     if (textChanged) {
-      _value = _highlighter.parse(
-          oldValue: _value, newValue: value, style: widget.style);
+      _value = _highlighter.parse(oldValue: _value, newValue: value, style: widget.style);
+      widget.controller.selection = TextSelection.collapsed(offset: _value.selection.baseOffset);
       _updateRemoteEditingValueIfNeeded();
     }
     if (textChanged && widget.onChanged != null) widget.onChanged(value.text);
