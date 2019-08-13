@@ -8,6 +8,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' hide materialTextSelectionControls;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' hide TextSelectionControls;
+import 'package:rich_code_editor/code_editor/code_highlighter.dart';
 import 'package:rich_code_editor/code_editor/widgets/code_selection.dart' as cs;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -172,7 +173,8 @@ class CodeTextField extends StatefulWidget {
     this.onTap,
     this.buildCounter,
     this.scrollController,
-    this.scrollPhysics,
+    this.scrollPhysics, 
+    @required this.highlighter,
   }) : assert(textAlign != null),
        assert(readOnly != null),
        assert(autofocus != null),
@@ -183,6 +185,7 @@ class CodeTextField extends StatefulWidget {
        assert(dragStartBehavior != null),
        assert(maxLines == null || maxLines > 0),
        assert(minLines == null || minLines > 0),
+       assert(highlighter != null),
        assert(
          (maxLines == null) || (minLines == null) || (maxLines >= minLines),
          'minLines can\'t be greater than maxLines',
@@ -301,6 +304,9 @@ class CodeTextField extends StatefulWidget {
 
   /// {@macro flutter.widgets.CodeEditableText.readOnly}
   final bool readOnly;
+
+  /// Code Highlighter
+  final CodeEditingValueHighlighterBase highlighter;
 
   /// {@macro flutter.widgets.CodeEditableText.showCursor}
   final bool showCursor;
@@ -932,6 +938,7 @@ class _CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCl
     Widget child = RepaintBoundary(
       child: CodeEditableText(
         key: _codeEditableTextKey,
+        highlighter: widget.highlighter,
         readOnly: widget.readOnly,
         showCursor: widget.showCursor,
         showSelectionHandles: _showSelectionHandles,

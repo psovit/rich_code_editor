@@ -17,7 +17,6 @@ import 'package:rich_code_editor/code_editor/code_highlighter.dart';
 import 'package:rich_code_editor/code_editor/widgets/code_editable.dart' as ce;
 import 'package:rich_code_editor/code_editor/widgets/code_editing_value.dart';
 import 'package:rich_code_editor/code_editor/widgets/code_selection.dart' as cs;
-import 'package:rich_code_editor/editor/utils/extensions.dart';
 
 export 'package:flutter/services.dart' show TextSelection, TextInputType;
 
@@ -160,8 +159,8 @@ class CodeEditingController extends ValueNotifier<CodeEditingValue> {
   /// in a separate statement. To change both the [text] and the [selection]
   /// change the controller's [value].
   set selection(TextSelection newSelection) {
-    if (newSelection.start > Extensions.length(textSpan) ||
-        newSelection.end > Extensions.length(textSpan))
+    if (newSelection.start > _getTextSpanLength(textSpan) ||
+        newSelection.end > _getTextSpanLength(textSpan))
       throw FlutterError('invalid text selection: $newSelection');
     value = value.copyWith(selection: newSelection, composing: TextRange.empty);
   }
@@ -310,6 +309,7 @@ class CodeEditableText extends StatefulWidget {
     this.enableInteractiveSelection,
     this.scrollController,
     this.scrollPhysics,
+    @required this.highlighter,
   })  : assert(controller != null),
         assert(focusNode != null),
         assert(obscureText != null),
@@ -322,6 +322,7 @@ class CodeEditableText extends StatefulWidget {
         assert(paintCursorAboveText != null),
         assert(backgroundCursorColor != null),
         assert(textAlign != null),
+        assert(highlighter != null),
         assert(maxLines == null || maxLines > 0),
         assert(minLines == null || minLines > 0),
         assert(
@@ -354,6 +355,9 @@ class CodeEditableText extends StatefulWidget {
 
   /// Controls whether this widget has keyboard focus.
   final FocusNode focusNode;
+
+  /// Code Highlighter
+  final CodeEditingValueHighlighterBase highlighter;
 
   /// {@template flutter.widgets.CodeEditableText.obscureText}
   /// Whether to hide the text being edited (e.g., for passwords).
@@ -862,6 +866,8 @@ class CodeEditableTextState extends State<CodeEditableText>
       ValueNotifier<bool>(true);
   final GlobalKey _editableKey = GlobalKey();
 
+  CodeEditingValueHighlighterBase _highlighter;
+
   TextInputConnection _textInputConnection;
   cs.TextSelectionOverlay _selectionOverlay;
 
@@ -919,6 +925,8 @@ class CodeEditableTextState extends State<CodeEditableText>
     _floatingCursorResetController = AnimationController(vsync: this);
     _floatingCursorResetController.addListener(_onFloatingCursorResetTick);
     _cursorVisibilityNotifier.value = widget.showCursor;
+
+    _highlighter = widget.highlighter;
   }
 
   @override
@@ -1396,10 +1404,10 @@ class CodeEditableTextState extends State<CodeEditableText>
   }
 
   void _formatAndSetValue(CodeEditingValue value) {
-    var dh = DummyHighlighter();
     final bool textChanged = _value?.text != value?.text;
     if (textChanged) {
-      _value = dh.parse(oldValue: _value, newValue: value, style: widget.style);
+      _value = _highlighter.parse(
+          oldValue: _value, newValue: value, style: widget.style);
       _updateRemoteEditingValueIfNeeded();
     }
     if (textChanged && widget.onChanged != null) widget.onChanged(value.text);
@@ -1817,4 +1825,15 @@ class _Editable extends LeafRenderObjectWidget {
 
     return value.value;
   }
+}
+
+/// Return the length of the text contained in this [TextSpan] tree.
+int _getTextSpanLength(TextSpan textSpan) {
+  assert(textSpan.debugAssertIsValid());
+  int length = 0;
+  textSpan.visitChildren((InlineSpan span) {
+    length += span.toPlainText().length;
+    return true;
+  });
+  return length;
 }
