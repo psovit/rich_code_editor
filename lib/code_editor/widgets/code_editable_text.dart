@@ -159,6 +159,10 @@ class CodeEditingController extends ValueNotifier<CodeEditingValue> {
   /// in a separate statement. To change both the [text] and the [selection]
   /// change the controller's [value].
   set selection(TextSelection newSelection) {
+    if (newSelection == null) {
+      value = value;
+      return;
+    }
     if (newSelection.start > _getTextSpanLength(textSpan) ||
         newSelection.end > _getTextSpanLength(textSpan))
       throw FlutterError('invalid text selection: $newSelection');
@@ -1289,18 +1293,20 @@ class CodeEditableTextState extends State<CodeEditableText>
     }
   }
 
-  /// If user tried to move the cursor to a tabbed space, 
+  /// If user tried to move the cursor to a tabbed space,
   /// push it to next available text's begining position.
   _resetSelectionPoint(int baseOffset) {
-    if(widget.controller.value.value.children != null) {
-      
-      var mapItem =_highlighter.getSpanForPosition(widget.controller.value.value, baseOffset);
+    if (widget.controller.value.value.children != null) {
+      var mapItem = _highlighter.getSpanForPosition(
+          widget.controller.value.value, baseOffset);
 
-      if(mapItem != null) {
+      if (mapItem != null) {
         var tabbedSpace = "    ";
-        if(mapItem.values.first.text == tabbedSpace) {
-          var afterBaseText = widget.controller.value.text.substring(baseOffset);
-          var nextWordOffset = afterBaseText.length - afterBaseText.trimLeft().length;
+        if (mapItem.values.first.text == tabbedSpace) {
+          var afterBaseText =
+              widget.controller.value.text.substring(baseOffset);
+          var nextWordOffset =
+              afterBaseText.length - afterBaseText.trimLeft().length;
           baseOffset = baseOffset + nextWordOffset;
         }
       }
@@ -1426,9 +1432,13 @@ class CodeEditableTextState extends State<CodeEditableText>
   void _formatAndSetValue(CodeEditingValue value) {
     final bool textChanged = _value?.text != value?.text;
     if (textChanged) {
-      _value = _highlighter.parse(oldValue: _value, newValue: value, style: widget.style);
-      widget.controller.selection = TextSelection.collapsed(offset: _value.selection.baseOffset);
-      _updateRemoteEditingValueIfNeeded();
+      var _parsed = _highlighter.parse(
+          oldValue: _value, newValue: value, style: widget.style);
+      if (_parsed.remotelyEdited) {
+        _lastKnownRemoteCodeEditingValue = _parsed;
+        _textInputConnection.setEditingState(_toTextEditingValue(_parsed));
+      }
+      _value = _parsed;
     }
     if (textChanged && widget.onChanged != null) widget.onChanged(value.text);
   }
@@ -1567,17 +1577,8 @@ class CodeEditableTextState extends State<CodeEditableText>
   ce.RenderEditableCode get renderEditable =>
       _editableKey.currentContext.findRenderObject();
 
-  @override
-  CodeEditingValue get codeEditingValue => _value;
-
   double get _devicePixelRatio =>
       MediaQuery.of(context).devicePixelRatio ?? 1.0;
-
-  @override
-  set codeEditingValue(CodeEditingValue value) {
-    _selectionOverlay?.update(_toTextEditingValue(value));
-    _formatAndSetValue(value);
-  }
 
   @override
   void bringIntoView(TextPosition position) {
@@ -1706,9 +1707,10 @@ class CodeEditableTextState extends State<CodeEditableText>
   @override
   set textEditingValue(TextEditingValue value) {
     var ts = TextSpan(text: value.text, style: widget.style);
-    _value = _value.copyWith(value: ts, selection: cs.TextSelection.fromPosition(cs.TextPosition(
-      offset: value.text.length
-    )));
+    _value = _value.copyWith(
+        value: ts,
+        selection: cs.TextSelection.fromPosition(
+            cs.TextPosition(offset: value.text.length)));
   }
 }
 
