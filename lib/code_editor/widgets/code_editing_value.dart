@@ -57,6 +57,7 @@ class CodeEditingValue {
     if (other is! CodeEditingValue) return false;
     final CodeEditingValue typedOther = other;
     return typedOther.text == text &&
+        typedOther.value == value &&
         typedOther.selection == selection &&
         typedOther.composing == composing;
   }

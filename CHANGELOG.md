@@ -1,3 +1,5 @@
+## [0.2.2] - 14th August 2019
+* Minor fixes on paste
 ## [0.2.1] - 13th August 2019
 * Allow pasting from the first cursor position
 * Move cursor to the end after paste
