@@ -1300,7 +1300,7 @@ class CodeEditableTextState extends State<CodeEditableText>
       var mapItem = _highlighter.getSpanForPosition(
           widget.controller.value.value, baseOffset);
 
-      if (mapItem != null) {
+      if (mapItem != null && mapItem.length > 0) {
         var tabbedSpace = "    ";
         if (mapItem.values.first.text == tabbedSpace) {
           var afterBaseText =

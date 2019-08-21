@@ -1,3 +1,5 @@
+## [0.2.21] - 21st August 2019
+* Fix for possible blank selection point
 ## [0.2.2] - 14th August 2019
 * Minor fixes on paste
 ## [0.2.1] - 13th August 2019
