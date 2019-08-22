@@ -988,10 +988,16 @@ class CodeEditableTextState extends State<CodeEditableText>
     if (widget.readOnly) {
       return;
     }
+
+    if (_lastKnownRemoteCodeEditingValue.text == value.text) {
+      // There is no difference between this value and the last known value.
+      return;
+    }
+    
     if (value.text != _value.text) {
       _hideSelectionOverlayIfNeeded();
       _showCaretOnScreen();
-    }
+    }   
 
     var newValue = new CodeEditingValue(
       value: new TextSpan(text: value.text, style: widget.style),
@@ -1006,7 +1012,7 @@ class CodeEditableTextState extends State<CodeEditableText>
         end: value.composing.end ?? -1,
       ),
       remotelyEdited: false,
-    );
+    );    
 
     _lastKnownRemoteCodeEditingValue = newValue;
     _formatAndSetValue(newValue);
