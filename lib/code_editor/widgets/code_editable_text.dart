@@ -274,7 +274,6 @@ class CodeEditableText extends StatefulWidget {
     @required this.controller,
     @required this.focusNode,
     this.readOnly = false,
-    this.obscureText = false,
     this.autocorrect = false,
     @required this.style,
     StrutStyle strutStyle,
@@ -316,7 +315,6 @@ class CodeEditableText extends StatefulWidget {
     @required this.highlighter,
   })  : assert(controller != null),
         assert(focusNode != null),
-        assert(obscureText != null),
         assert(autocorrect != null),
         assert(showSelectionHandles != null),
         assert(readOnly != null),
@@ -362,16 +360,6 @@ class CodeEditableText extends StatefulWidget {
 
   /// Code Highlighter
   final CodeEditingValueHighlighterBase highlighter;
-
-  /// {@template flutter.widgets.CodeEditableText.obscureText}
-  /// Whether to hide the text being edited (e.g., for passwords).
-  ///
-  /// When this is set to true, all the characters in the text field are
-  /// replaced by U+2022 BULLET characters (•).
-  ///
-  /// Defaults to false. Cannot be null.
-  /// {@endtemplate}
-  final bool obscureText;
 
   /// {@template flutter.widgets.CodeEditableText.readOnly}
   /// Whether the text can be changed.
@@ -814,7 +802,7 @@ class CodeEditableText extends StatefulWidget {
 
   /// {@macro flutter.rendering.editable.selectionEnabled}
   bool get selectionEnabled {
-    return enableInteractiveSelection ?? !obscureText;
+    return enableInteractiveSelection ?? true;
   }
 
   @override
@@ -826,8 +814,6 @@ class CodeEditableText extends StatefulWidget {
     properties.add(
         DiagnosticsProperty<CodeEditingController>('controller', controller));
     properties.add(DiagnosticsProperty<FocusNode>('focusNode', focusNode));
-    properties.add(DiagnosticsProperty<bool>('obscureText', obscureText,
-        defaultValue: false));
     properties.add(DiagnosticsProperty<bool>('autocorrect', autocorrect,
         defaultValue: true));
     style?.debugFillProperties(properties);
@@ -1005,10 +991,6 @@ class CodeEditableTextState extends State<CodeEditableText>
     if (value.text != _value.text) {
       _hideSelectionOverlayIfNeeded();
       _showCaretOnScreen();
-      if (widget.obscureText && value.text.length == _value.text.length + 1) {
-        _obscureShowCharTicksPending = _kObscureShowLatestCharCursorTicks;
-        _obscureLatestCharIndex = _value.selection.baseOffset;
-      }
     }
 
     var newValue = new CodeEditingValue(
@@ -1231,7 +1213,7 @@ class CodeEditableTextState extends State<CodeEditableText>
         this,
         TextInputConfiguration(
           inputType: widget.keyboardType,
-          obscureText: widget.obscureText,
+          obscureText: false,
           autocorrect: widget.autocorrect,
           inputAction: widget.textInputAction ??
               (widget.keyboardType == TextInputType.multiline
@@ -1465,9 +1447,6 @@ class CodeEditableTextState extends State<CodeEditableText>
   @visibleForTesting
   cs.TextSelectionOverlay get selectionOverlay => _selectionOverlay;
 
-  int _obscureShowCharTicksPending = 0;
-  int _obscureLatestCharIndex;
-
   void _cursorTick(Timer timer) {
     _targetCursorVisibility = !_targetCursorVisibility;
     final double targetOpacity = _targetCursorVisibility ? 1.0 : 0.0;
@@ -1483,12 +1462,6 @@ class CodeEditableTextState extends State<CodeEditableText>
           curve: Curves.easeOut);
     } else {
       _cursorBlinkOpacityController.value = targetOpacity;
-    }
-
-    if (_obscureShowCharTicksPending > 0) {
-      setState(() {
-        _obscureShowCharTicksPending--;
-      });
     }
   }
 
@@ -1516,7 +1489,6 @@ class CodeEditableTextState extends State<CodeEditableText>
     _targetCursorVisibility = false;
     _cursorBlinkOpacityController.value = 0.0;
     if (CodeEditableText.debugDeterministicCursor) return;
-    if (resetCharTicks) _obscureShowCharTicksPending = 0;
     if (widget.cursorOpacityAnimates) {
       _cursorBlinkOpacityController.stop();
       _cursorBlinkOpacityController.value = 0.0;
@@ -1681,7 +1653,6 @@ class CodeEditableTextState extends State<CodeEditableText>
               textAlign: widget.textAlign,
               textDirection: _textDirection,
               locale: widget.locale,
-              obscureText: widget.obscureText,
               autocorrect: widget.autocorrect,
               offset: offset,
               onSelectionChanged: _handleSelectionChanged,
@@ -1732,7 +1703,6 @@ class _Editable extends LeafRenderObjectWidget {
     this.textAlign,
     @required this.textDirection,
     this.locale,
-    this.obscureText,
     this.autocorrect,
     this.offset,
     this.onSelectionChanged,
@@ -1764,7 +1734,6 @@ class _Editable extends LeafRenderObjectWidget {
   final TextAlign textAlign;
   final TextDirection textDirection;
   final Locale locale;
-  final bool obscureText;
   final bool autocorrect;
   final ViewportOffset offset;
   final ce.SelectionChangedHandler onSelectionChanged;
@@ -1800,7 +1769,6 @@ class _Editable extends LeafRenderObjectWidget {
       onSelectionChanged: onSelectionChanged,
       onCaretChanged: onCaretChanged,
       ignorePointer: rendererIgnoresPointer,
-      obscureText: obscureText,
       cursorWidth: cursorWidth,
       cursorRadius: cursorRadius,
       cursorOffset: cursorOffset,
@@ -1833,7 +1801,6 @@ class _Editable extends LeafRenderObjectWidget {
       ..onSelectionChanged = onSelectionChanged
       ..onCaretChanged = onCaretChanged
       ..ignorePointer = rendererIgnoresPointer
-      ..obscureText = obscureText
       ..cursorWidth = cursorWidth
       ..cursorRadius = cursorRadius
       ..cursorOffset = cursorOffset
