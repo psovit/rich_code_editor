@@ -1009,7 +1009,8 @@ class CodeEditableTextState extends State<CodeEditableText>
       remotelyEdited: false,
     );
 
-    if (_lastKnownRemoteCodeEditingValue.text == value.text && !pendingPasteUpdate) {
+    if (_lastKnownRemoteCodeEditingValue.text == value.text &&
+        !pendingPasteUpdate) {
       // There is no difference between this value and the last known value text.
       return;
     }
@@ -1531,7 +1532,9 @@ class CodeEditableTextState extends State<CodeEditableText>
   void _didChangeCodeEditingValue() {
     //update editing value required to be called during paste interaction only
     //_updateRemoteEditingValueIfNeeded();
-    if (_value.text == _lastKnownRemoteCodeEditingValue.text &&
+    if (_value != null &&
+        _lastKnownRemoteCodeEditingValue != null &&
+        _value.text == _lastKnownRemoteCodeEditingValue.text &&
         _value.selection != _lastKnownRemoteCodeEditingValue.selection) {
       _updateRemoteEditingValueIfNeeded();
     }
