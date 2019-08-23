@@ -36,13 +36,14 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
   // GlobalKey<RichTextFieldState> _richTextFieldState =
   //     new GlobalKey<RichTextFieldState>();
 
+  CodeEditingController _cec = CodeEditingController();
+
   @override
   void dispose() {
     //_richTextFieldState.currentState?.dispose();
     super.dispose();
   }
 
-  var tbKey = 1;
 
   @override
   Widget build(BuildContext context) {
@@ -63,21 +64,11 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
                         border: new Border.all(
                             color: Theme.of(context).primaryColor)),
                     child: PageView(
-                      onPageChanged: (i) {
-                        if(i == 1) {
-                          setState(() {
-                            tbKey ++;
-                          });
-                        }
-                      },
                       children: <Widget>[
                         new CodeTextField(
-                          highlighter: DummyHighlighter(), 
-                          onChanged: (t) {
-                            print("text: ");
-                            print(t);
-                          },
-                          controller: CodeEditingController(),
+                          highlighter: DummyHighlighter(),
+                          onChanged: (t) {},
+                          controller: _cec,
                           maxLines: null,
                           decoration: null,
                           autofocus: true,
