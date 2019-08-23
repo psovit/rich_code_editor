@@ -136,7 +136,11 @@ class _TextSelectionHandlePainter extends CustomPainter {
   }
 }
 
-class _MaterialTextSelectionControls extends cs.TextSelectionControls {
+class MaterialTextSelectionControls extends cs.TextSelectionControls {
+  final VoidCallback onPasteCallback;
+
+  MaterialTextSelectionControls(this.onPasteCallback);
+
   /// Returns the size of the Material handle.
   @override
   Size getHandleSize(double textLineHeight) =>
@@ -166,7 +170,10 @@ class _MaterialTextSelectionControls extends cs.TextSelectionControls {
         child: _TextSelectionToolbar(
           handleCut: null,//canCut(delegate) ? () => handleCut(delegate) : null,
           handleCopy: null,//canCopy(delegate) ? () => handleCopy(delegate) : null,
-          handlePaste: canPaste(delegate) ? () => handlePaste(delegate) : null,
+          handlePaste: canPaste(delegate) ? (){
+              handlePaste(delegate); 
+              if(onPasteCallback != null) onPasteCallback();
+            }: null,
           handleSelectAll: null,//canSelectAll(delegate) ? () => handleSelectAll(delegate) : null,
         ),
       ),
@@ -233,6 +240,6 @@ class _MaterialTextSelectionControls extends cs.TextSelectionControls {
   }
 }
 
-/// Text selection controls that follow the Material Design specification.
-final cs.TextSelectionControls materialTextSelectionControls =
-    _MaterialTextSelectionControls();
+// /// Text selection controls that follow the Material Design specification.
+// final cs.TextSelectionControls materialTextSelectionControls =
+//     MaterialTextSelectionControls();

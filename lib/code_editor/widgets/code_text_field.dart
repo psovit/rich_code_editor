@@ -16,6 +16,7 @@ import 'package:rich_code_editor/code_editor/widgets/code_editable.dart' as ce;
 import 'package:rich_code_editor/code_editor/widgets/material_selection.dart' as ms;
 
 import 'code_editable_text.dart';
+import 'code_editing_value.dart';
 
 export 'package:flutter/services.dart' show TextInputType, TextInputAction, TextCapitalization;
 
@@ -871,6 +872,17 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
     }
   }
 
+  _pasteHandler() {
+    this._codeEditableText.pendingPasteUpdate = true;
+  }
+
+  _toTextEditingValue(CodeEditingValue codeEditingValue) {
+    return TextEditingValue(
+        text: codeEditingValue.text,
+        composing: codeEditingValue.composing,
+        selection: codeEditingValue.selection);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // See AutomaticKeepAliveClientMixin.
@@ -922,7 +934,7 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
         forcePressEnabled = false;
-        textSelectionControls = ms.materialTextSelectionControls;
+        textSelectionControls = ms.MaterialTextSelectionControls(_pasteHandler);// ms.materialTextSelectionControls;
         paintCursorAboveText = false;
         cursorOpacityAnimates = false;
         cursorColor ??= themeData.cursorColor;
