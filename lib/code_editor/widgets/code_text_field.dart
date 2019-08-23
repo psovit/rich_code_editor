@@ -16,6 +16,7 @@ import 'package:rich_code_editor/code_editor/widgets/code_editable.dart' as ce;
 import 'package:rich_code_editor/code_editor/widgets/material_selection.dart' as ms;
 
 import 'code_editable_text.dart';
+import 'code_editing_value.dart';
 
 export 'package:flutter/services.dart' show TextInputType, TextInputAction, TextCapitalization;
 
@@ -151,7 +152,6 @@ class CodeTextField extends StatefulWidget {
     this.readOnly = false,
     this.showCursor,
     this.autofocus = false,
-    this.obscureText = false,
     this.autocorrect = true,
     this.maxLines = 1,
     this.minLines,
@@ -178,7 +178,6 @@ class CodeTextField extends StatefulWidget {
   }) : assert(textAlign != null),
        assert(readOnly != null),
        assert(autofocus != null),
-       assert(obscureText != null),
        assert(autocorrect != null),
        assert(maxLengthEnforced != null),
        assert(scrollPadding != null),
@@ -286,9 +285,6 @@ class CodeTextField extends StatefulWidget {
 
   /// {@macro flutter.widgets.CodeEditableText.autofocus}
   final bool autofocus;
-
-  /// {@macro flutter.widgets.CodeEditableText.obscureText}
-  final bool obscureText;
 
   /// {@macro flutter.widgets.CodeEditableText.autocorrect}
   final bool autocorrect;
@@ -431,7 +427,7 @@ class CodeTextField extends StatefulWidget {
 
   /// {@macro flutter.rendering.editable.selectionEnabled}
   bool get selectionEnabled {
-    return enableInteractiveSelection ?? !obscureText;
+    return enableInteractiveSelection ?? true;
   }
 
   /// Called when the user taps on this text field.
@@ -502,7 +498,6 @@ class CodeTextField extends StatefulWidget {
     properties.add(DiagnosticsProperty<TextInputType>('keyboardType', keyboardType, defaultValue: TextInputType.text));
     properties.add(DiagnosticsProperty<TextStyle>('style', style, defaultValue: null));
     properties.add(DiagnosticsProperty<bool>('autofocus', autofocus, defaultValue: false));
-    properties.add(DiagnosticsProperty<bool>('obscureText', obscureText, defaultValue: false));
     properties.add(DiagnosticsProperty<bool>('autocorrect', autocorrect, defaultValue: true));
     properties.add(IntProperty('maxLines', maxLines, defaultValue: 1));
     properties.add(IntProperty('minLines', minLines, defaultValue: null));
@@ -877,6 +872,17 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
     }
   }
 
+  _pasteHandler() {
+    this._codeEditableText.pendingPasteUpdate = true;
+  }
+
+  _toTextEditingValue(CodeEditingValue codeEditingValue) {
+    return TextEditingValue(
+        text: codeEditingValue.text,
+        composing: codeEditingValue.composing,
+        selection: codeEditingValue.selection);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context); // See AutomaticKeepAliveClientMixin.
@@ -928,7 +934,7 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
         forcePressEnabled = false;
-        textSelectionControls = ms.materialTextSelectionControls;
+        textSelectionControls = ms.MaterialTextSelectionControls(_pasteHandler);// ms.materialTextSelectionControls;
         paintCursorAboveText = false;
         cursorOpacityAnimates = false;
         cursorColor ??= themeData.cursorColor;
@@ -952,7 +958,6 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
         textAlign: widget.textAlign,
         textDirection: widget.textDirection,
         autofocus: widget.autofocus,
-        obscureText: widget.obscureText,
         autocorrect: widget.autocorrect,
         maxLines: widget.maxLines,
         minLines: widget.minLines,

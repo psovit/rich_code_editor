@@ -13,7 +13,7 @@ const double _kHandleSize = 22.0;
 
 // Minimal padding from all edges of the selection toolbar to all edges of the
 // viewport.
-const double _kToolbarScreenPadding = 8.0;
+const double _kToolbarScreenPadding = 44.0;
 const double _kToolbarHeight = 44.0;
 
 /// Manages a copy/paste text selection toolbar.
@@ -136,7 +136,11 @@ class _TextSelectionHandlePainter extends CustomPainter {
   }
 }
 
-class _MaterialTextSelectionControls extends cs.TextSelectionControls {
+class MaterialTextSelectionControls extends cs.TextSelectionControls {
+  final VoidCallback onPasteCallback;
+
+  MaterialTextSelectionControls(this.onPasteCallback);
+
   /// Returns the size of the Material handle.
   @override
   Size getHandleSize(double textLineHeight) =>
@@ -155,38 +159,21 @@ class _MaterialTextSelectionControls extends cs.TextSelectionControls {
     assert(debugCheckHasMediaQuery(context));
     assert(debugCheckHasMaterialLocalizations(context));
 
-    // The toolbar should appear below the TextField
-    // when there is not enough space above the TextField to show it.
-    final ce.TextSelectionPoint startTextSelectionPoint = endpoints[0];
-    final ce.TextSelectionPoint endTextSelectionPoint =
-        (endpoints.length > 1) ? endpoints[1] : null;
-    final double x = (endTextSelectionPoint == null)
-        ? startTextSelectionPoint.point.dx
-        : (startTextSelectionPoint.point.dx + endTextSelectionPoint.point.dx) /
-            2.0;
-    final double availableHeight = globalEditableRegion.top -
-        MediaQuery.of(context).padding.top -
-        _kToolbarScreenPadding;
-    final double y = (availableHeight < _kToolbarHeight)
-        ? startTextSelectionPoint.point.dy +
-            globalEditableRegion.height +
-            _kToolbarHeight +
-            _kToolbarScreenPadding
-        : startTextSelectionPoint.point.dy - globalEditableRegion.height;
-    final Offset preciseMidpoint = Offset(x, y);
-
     return ConstrainedBox(
       constraints: BoxConstraints.tight(globalEditableRegion.size),
       child: CustomSingleChildLayout(
         delegate: _TextSelectionToolbarLayout(
           MediaQuery.of(context).size,
           globalEditableRegion,
-          preciseMidpoint,
+          position,
         ),
         child: _TextSelectionToolbar(
           handleCut: null,//canCut(delegate) ? () => handleCut(delegate) : null,
           handleCopy: null,//canCopy(delegate) ? () => handleCopy(delegate) : null,
-          handlePaste: canPaste(delegate) ? () => handlePaste(delegate) : null,
+          handlePaste: canPaste(delegate) ? (){
+              handlePaste(delegate); 
+              if(onPasteCallback != null) onPasteCallback();
+            }: null,
           handleSelectAll: null,//canSelectAll(delegate) ? () => handleSelectAll(delegate) : null,
         ),
       ),
@@ -253,6 +240,6 @@ class _MaterialTextSelectionControls extends cs.TextSelectionControls {
   }
 }
 
-/// Text selection controls that follow the Material Design specification.
-final cs.TextSelectionControls materialTextSelectionControls =
-    _MaterialTextSelectionControls();
+// /// Text selection controls that follow the Material Design specification.
+// final cs.TextSelectionControls materialTextSelectionControls =
+//     MaterialTextSelectionControls();

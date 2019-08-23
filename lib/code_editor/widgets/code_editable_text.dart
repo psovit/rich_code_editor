@@ -274,7 +274,6 @@ class CodeEditableText extends StatefulWidget {
     @required this.controller,
     @required this.focusNode,
     this.readOnly = false,
-    this.obscureText = false,
     this.autocorrect = false,
     @required this.style,
     StrutStyle strutStyle,
@@ -316,7 +315,6 @@ class CodeEditableText extends StatefulWidget {
     @required this.highlighter,
   })  : assert(controller != null),
         assert(focusNode != null),
-        assert(obscureText != null),
         assert(autocorrect != null),
         assert(showSelectionHandles != null),
         assert(readOnly != null),
@@ -362,16 +360,6 @@ class CodeEditableText extends StatefulWidget {
 
   /// Code Highlighter
   final CodeEditingValueHighlighterBase highlighter;
-
-  /// {@template flutter.widgets.CodeEditableText.obscureText}
-  /// Whether to hide the text being edited (e.g., for passwords).
-  ///
-  /// When this is set to true, all the characters in the text field are
-  /// replaced by U+2022 BULLET characters (•).
-  ///
-  /// Defaults to false. Cannot be null.
-  /// {@endtemplate}
-  final bool obscureText;
 
   /// {@template flutter.widgets.CodeEditableText.readOnly}
   /// Whether the text can be changed.
@@ -814,7 +802,7 @@ class CodeEditableText extends StatefulWidget {
 
   /// {@macro flutter.rendering.editable.selectionEnabled}
   bool get selectionEnabled {
-    return enableInteractiveSelection ?? !obscureText;
+    return enableInteractiveSelection ?? true;
   }
 
   @override
@@ -826,8 +814,6 @@ class CodeEditableText extends StatefulWidget {
     properties.add(
         DiagnosticsProperty<CodeEditingController>('controller', controller));
     properties.add(DiagnosticsProperty<FocusNode>('focusNode', focusNode));
-    properties.add(DiagnosticsProperty<bool>('obscureText', obscureText,
-        defaultValue: false));
     properties.add(DiagnosticsProperty<bool>('autocorrect', autocorrect,
         defaultValue: true));
     style?.debugFillProperties(properties);
@@ -1002,13 +988,10 @@ class CodeEditableTextState extends State<CodeEditableText>
     if (widget.readOnly) {
       return;
     }
+
     if (value.text != _value.text) {
       _hideSelectionOverlayIfNeeded();
       _showCaretOnScreen();
-      if (widget.obscureText && value.text.length == _value.text.length + 1) {
-        _obscureShowCharTicksPending = _kObscureShowLatestCharCursorTicks;
-        _obscureLatestCharIndex = _value.selection.baseOffset;
-      }
     }
 
     var newValue = new CodeEditingValue(
@@ -1025,6 +1008,11 @@ class CodeEditableTextState extends State<CodeEditableText>
       ),
       remotelyEdited: false,
     );
+
+    if (_lastKnownRemoteCodeEditingValue.text == value.text && !pendingPasteUpdate) {
+      // There is no difference between this value and the last known value text.
+      return;
+    }
 
     _lastKnownRemoteCodeEditingValue = newValue;
     _formatAndSetValue(newValue);
@@ -1172,6 +1160,11 @@ class CodeEditableTextState extends State<CodeEditableText>
     _textInputConnection.setEditingState(_toTextEditingValue(localValue));
   }
 
+  void updateRemoteEditingValue(CodeEditingValue newValue) {
+    _lastKnownRemoteCodeEditingValue = newValue;
+    _textInputConnection.setEditingState(_toTextEditingValue(newValue));
+  }
+
   CodeEditingValue get _value => widget.controller.value;
   set _value(CodeEditingValue value) {
     widget.controller.value = value;
@@ -1231,7 +1224,7 @@ class CodeEditableTextState extends State<CodeEditableText>
         this,
         TextInputConfiguration(
           inputType: widget.keyboardType,
-          obscureText: widget.obscureText,
+          obscureText: false,
           autocorrect: widget.autocorrect,
           inputAction: widget.textInputAction ??
               (widget.keyboardType == TextInputType.multiline
@@ -1317,6 +1310,9 @@ class CodeEditableTextState extends State<CodeEditableText>
 
   void _handleSelectionChanged(TextSelection selection,
       ce.RenderEditableCode renderObject, ce.SelectionChangedCause cause) {
+    //the line below prevents users from moving the cursor selection to a tabbed space.
+    //if you want to allow users to tap into tabbed space, you can probably uncomment the line below.
+    //or you can also configure this with a parameter.
     widget.controller.selection = _resetSelectionPoint(selection.baseOffset);
 
     // This will show the keyboard for all selection changes on the
@@ -1430,6 +1426,15 @@ class CodeEditableTextState extends State<CodeEditableText>
   }
 
   void _formatAndSetValue(CodeEditingValue value) {
+    if (pendingPasteUpdate) {
+      // in this case we need to update styles and setEditingState
+      var _parsed = _highlighter.updateStyle(value);
+      _lastKnownRemoteCodeEditingValue = _parsed;
+      _textInputConnection.setEditingState(_toTextEditingValue(_parsed));
+      _value = _parsed;
+      return;
+    }
+
     final bool textChanged = _value?.text != value?.text;
     if (textChanged) {
       var _parsed = _highlighter.parse(
@@ -1465,8 +1470,8 @@ class CodeEditableTextState extends State<CodeEditableText>
   @visibleForTesting
   cs.TextSelectionOverlay get selectionOverlay => _selectionOverlay;
 
-  int _obscureShowCharTicksPending = 0;
-  int _obscureLatestCharIndex;
+  //if user tried to paste on the editor, this value sets to true
+  bool pendingPasteUpdate = false;
 
   void _cursorTick(Timer timer) {
     _targetCursorVisibility = !_targetCursorVisibility;
@@ -1483,12 +1488,6 @@ class CodeEditableTextState extends State<CodeEditableText>
           curve: Curves.easeOut);
     } else {
       _cursorBlinkOpacityController.value = targetOpacity;
-    }
-
-    if (_obscureShowCharTicksPending > 0) {
-      setState(() {
-        _obscureShowCharTicksPending--;
-      });
     }
   }
 
@@ -1516,7 +1515,6 @@ class CodeEditableTextState extends State<CodeEditableText>
     _targetCursorVisibility = false;
     _cursorBlinkOpacityController.value = 0.0;
     if (CodeEditableText.debugDeterministicCursor) return;
-    if (resetCharTicks) _obscureShowCharTicksPending = 0;
     if (widget.cursorOpacityAnimates) {
       _cursorBlinkOpacityController.stop();
       _cursorBlinkOpacityController.value = 0.0;
@@ -1531,7 +1529,16 @@ class CodeEditableTextState extends State<CodeEditableText>
   }
 
   void _didChangeCodeEditingValue() {
-    _updateRemoteEditingValueIfNeeded();
+    //update editing value required to be called during paste interaction only
+    //_updateRemoteEditingValueIfNeeded();
+    if (_value.text == _lastKnownRemoteCodeEditingValue.text &&
+        _value.selection != _lastKnownRemoteCodeEditingValue.selection) {
+      _updateRemoteEditingValueIfNeeded();
+    }
+    if (pendingPasteUpdate) {
+      updateEditingValue(_toTextEditingValue(_value));
+      pendingPasteUpdate = false;
+    }
     _startOrStopCursorTimerIfNeeded();
     _updateOrDisposeSelectionOverlayIfNeeded();
     _textChangedSinceLastCaretUpdate = true;
@@ -1614,33 +1621,6 @@ class CodeEditableTextState extends State<CodeEditableText>
     }
   }
 
-  VoidCallback _semanticsOnCopy(cs.TextSelectionControls controls) {
-    return widget.selectionEnabled &&
-            copyEnabled &&
-            _hasFocus &&
-            controls?.canCopy(this) == true
-        ? () => controls.handleCopy(this)
-        : null;
-  }
-
-  VoidCallback _semanticsOnCut(cs.TextSelectionControls controls) {
-    return widget.selectionEnabled &&
-            cutEnabled &&
-            _hasFocus &&
-            controls?.canCut(this) == true
-        ? () => controls.handleCut(this)
-        : null;
-  }
-
-  VoidCallback _semanticsOnPaste(cs.TextSelectionControls controls) {
-    return widget.selectionEnabled &&
-            pasteEnabled &&
-            _hasFocus &&
-            controls?.canPaste(this) == true
-        ? () => controls.handlePaste(this)
-        : null;
-  }
-
   @override
   Widget build(BuildContext context) {
     assert(debugCheckHasMediaQuery(context));
@@ -1657,44 +1637,38 @@ class CodeEditableTextState extends State<CodeEditableText>
       viewportBuilder: (BuildContext context, ViewportOffset offset) {
         return CompositedTransformTarget(
           link: _layerLink,
-          child: Semantics(
-            onCopy: _semanticsOnCopy(controls),
-            onCut: _semanticsOnCut(controls),
-            onPaste: _semanticsOnPaste(controls),
-            child: _Editable(
-              key: _editableKey,
-              textSpan: _value.value,
-              value: _value,
-              cursorColor: _cursorColor,
-              backgroundCursorColor: widget.backgroundCursorColor,
-              showCursor: CodeEditableText.debugDeterministicCursor
-                  ? ValueNotifier<bool>(widget.showCursor)
-                  : _cursorVisibilityNotifier,
-              hasFocus: _hasFocus,
-              maxLines: widget.maxLines,
-              minLines: widget.minLines,
-              expands: widget.expands,
-              strutStyle: widget.strutStyle,
-              selectionColor: widget.selectionColor,
-              textScaleFactor: widget.textScaleFactor ??
-                  MediaQuery.textScaleFactorOf(context),
-              textAlign: widget.textAlign,
-              textDirection: _textDirection,
-              locale: widget.locale,
-              obscureText: widget.obscureText,
-              autocorrect: widget.autocorrect,
-              offset: offset,
-              onSelectionChanged: _handleSelectionChanged,
-              onCaretChanged: _handleCaretChanged,
-              rendererIgnoresPointer: widget.rendererIgnoresPointer,
-              cursorWidth: widget.cursorWidth,
-              cursorRadius: widget.cursorRadius,
-              cursorOffset: widget.cursorOffset,
-              paintCursorAboveText: widget.paintCursorAboveText,
-              enableInteractiveSelection: widget.enableInteractiveSelection,
-              textSelectionDelegate: this,
-              devicePixelRatio: _devicePixelRatio,
-            ),
+          child: _Editable(
+            key: _editableKey,
+            textSpan: _value.value,
+            value: _value,
+            cursorColor: _cursorColor,
+            backgroundCursorColor: widget.backgroundCursorColor,
+            showCursor: CodeEditableText.debugDeterministicCursor
+                ? ValueNotifier<bool>(widget.showCursor)
+                : _cursorVisibilityNotifier,
+            hasFocus: _hasFocus,
+            maxLines: widget.maxLines,
+            minLines: widget.minLines,
+            expands: widget.expands,
+            strutStyle: widget.strutStyle,
+            selectionColor: widget.selectionColor,
+            textScaleFactor:
+                widget.textScaleFactor ?? MediaQuery.textScaleFactorOf(context),
+            textAlign: widget.textAlign,
+            textDirection: _textDirection,
+            locale: widget.locale,
+            autocorrect: widget.autocorrect,
+            offset: offset,
+            onSelectionChanged: _handleSelectionChanged,
+            onCaretChanged: _handleCaretChanged,
+            rendererIgnoresPointer: widget.rendererIgnoresPointer,
+            cursorWidth: widget.cursorWidth,
+            cursorRadius: widget.cursorRadius,
+            cursorOffset: widget.cursorOffset,
+            paintCursorAboveText: widget.paintCursorAboveText,
+            enableInteractiveSelection: widget.enableInteractiveSelection,
+            textSelectionDelegate: this,
+            devicePixelRatio: _devicePixelRatio,
           ),
         );
       },
@@ -1732,7 +1706,6 @@ class _Editable extends LeafRenderObjectWidget {
     this.textAlign,
     @required this.textDirection,
     this.locale,
-    this.obscureText,
     this.autocorrect,
     this.offset,
     this.onSelectionChanged,
@@ -1764,7 +1737,6 @@ class _Editable extends LeafRenderObjectWidget {
   final TextAlign textAlign;
   final TextDirection textDirection;
   final Locale locale;
-  final bool obscureText;
   final bool autocorrect;
   final ViewportOffset offset;
   final ce.SelectionChangedHandler onSelectionChanged;
@@ -1800,7 +1772,6 @@ class _Editable extends LeafRenderObjectWidget {
       onSelectionChanged: onSelectionChanged,
       onCaretChanged: onCaretChanged,
       ignorePointer: rendererIgnoresPointer,
-      obscureText: obscureText,
       cursorWidth: cursorWidth,
       cursorRadius: cursorRadius,
       cursorOffset: cursorOffset,
@@ -1833,7 +1804,6 @@ class _Editable extends LeafRenderObjectWidget {
       ..onSelectionChanged = onSelectionChanged
       ..onCaretChanged = onCaretChanged
       ..ignorePointer = rendererIgnoresPointer
-      ..obscureText = obscureText
       ..cursorWidth = cursorWidth
       ..cursorRadius = cursorRadius
       ..cursorOffset = cursorOffset

@@ -930,7 +930,7 @@ class RenderEditableCode extends RenderBox {
   /// field, or to false to unconditionally disable interactive selection.
   /// {@endtemplate}
   bool get selectionEnabled {
-    return enableInteractiveSelection ?? !obscureText;
+    return enableInteractiveSelection ?? true;
   }
 
   @override

@@ -1,4 +1,6 @@
-## [0.2.21] - 21st August 2019
+## [0.2.4] - 23rd August 2019
+* Reduce calls to updateEditing value & TextInputConnection setEditingState
+## [0.2.3] - 21st August 2019
 * Fix for possible blank selection point
 ## [0.2.2] - 14th August 2019
 * Minor fixes on paste
