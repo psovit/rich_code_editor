@@ -1530,18 +1530,18 @@ class CodeEditableTextState extends State<CodeEditableText>
   }
 
   void _didChangeCodeEditingValue() {
-    //update editing value required to be called during paste interaction only
-    //_updateRemoteEditingValueIfNeeded();
-    if (_value != null &&
-        _lastKnownRemoteCodeEditingValue != null &&
-        _value.text == _lastKnownRemoteCodeEditingValue.text &&
-        _value.selection != _lastKnownRemoteCodeEditingValue.selection) {
-      _updateRemoteEditingValueIfNeeded();
+    //update editing value required to be called during paste interaction and remotely edited condition    
+    if (_value != null) {
+      if (_value.remotelyEdited ||
+          (_lastKnownRemoteCodeEditingValue != null &&
+              _value.text == _lastKnownRemoteCodeEditingValue.text &&
+              _value.selection != _lastKnownRemoteCodeEditingValue.selection) ||
+          pendingPasteUpdate) {
+        _updateRemoteEditingValueIfNeeded();
+        pendingPasteUpdate = false;
+      }
     }
-    if (pendingPasteUpdate) {
-      updateEditingValue(_toTextEditingValue(_value));
-      pendingPasteUpdate = false;
-    }
+
     _startOrStopCursorTimerIfNeeded();
     _updateOrDisposeSelectionOverlayIfNeeded();
     _textChangedSinceLastCaretUpdate = true;
