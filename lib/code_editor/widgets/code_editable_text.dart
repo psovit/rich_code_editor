@@ -1530,9 +1530,9 @@ class CodeEditableTextState extends State<CodeEditableText>
   }
 
   void _didChangeCodeEditingValue() {
-    //update editing value required to be called during paste interaction and remotely edited condition    
+    //update editing value required to be called during paste interaction and remotely edited condition
     if (_value != null) {
-      if (_value.remotelyEdited ||
+      if ((_value.remotelyEdited != null && _value.remotelyEdited) ||
           (_lastKnownRemoteCodeEditingValue != null &&
               _value.text == _lastKnownRemoteCodeEditingValue.text &&
               _value.selection != _lastKnownRemoteCodeEditingValue.selection) ||
