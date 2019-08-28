@@ -1227,10 +1227,7 @@ class CodeEditableTextState extends State<CodeEditableText>
           inputType: widget.keyboardType,
           obscureText: false,
           autocorrect: widget.autocorrect,
-          inputAction: widget.textInputAction ??
-              (widget.keyboardType == TextInputType.multiline
-                  ? TextInputAction.newline
-                  : TextInputAction.done),
+          inputAction: TextInputAction.newline,
           textCapitalization: widget.textCapitalization,
           keyboardAppearance: widget.keyboardAppearance,
         ),
