@@ -1,3 +1,5 @@
+## [0.2.6] - 28th August 2019
+* Fix for a possible null exception of remotelyEdited check
 ## [0.2.5] - 25th August 2019
 * Fix for setEditingState not sent on value remotely edited
 ## [0.2.4] - 23rd August 2019
