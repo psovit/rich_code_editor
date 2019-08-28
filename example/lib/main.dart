@@ -66,6 +66,11 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
                     child: PageView(
                       children: <Widget>[
                         new CodeTextField(
+                          //keyboard type is set to email address in order to
+                          //prevent auto text correction after typing.
+                          //Since the autoCorrect:false property isn't working, we use this hack here.
+                          //https://github.com/flutter/flutter/issues/22828
+                          keyboardType: TextInputType.emailAddress,
                           highlighter: DummyHighlighter(),
                           onChanged: (t) {},
                           controller: _cec,
