@@ -1,3 +1,5 @@
+## [0.2.7] - 29th August 2019
+* Export CodeEditingValue in library
 ## [0.2.6] - 28th August 2019
 * Fix for a possible null exception of remotelyEdited check
 ## [0.2.5] - 25th August 2019
