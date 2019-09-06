@@ -1,3 +1,5 @@
+## [0.2.8] - 6th September 2019
+* Fix for `getSpanForPosition` method implementation
 ## [0.2.7] - 29th August 2019
 * Export CodeEditingValue in library
 ## [0.2.6] - 28th August 2019
