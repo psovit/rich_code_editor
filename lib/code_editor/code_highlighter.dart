@@ -16,7 +16,6 @@ abstract class CodeEditingValueHighlighterBase {
   /// that contains the given position in the text.
   /// This method gets called from [CodeEditableText] during reset selection change event.
   /// It can be used as required during parse as well.
-  @override
   Map<int, TextSpan> getSpanForPosition(TextSpan parent, int targetOffset) {
     var map = Map<int, TextSpan>();
     int offset = 0;
@@ -26,36 +25,23 @@ abstract class CodeEditingValueHighlighterBase {
     }
 
     var i = 0;
-    parent.children.forEach((child) {
-      var tspan = child as TextSpan;
 
-      if (tspan.children != null && tspan.children.length > 0) {
-        //check in children
-        bool foundInChildren = false;
-
-        tspan.children.forEach((child2) {
-          var tspan2 = child2 as TextSpan;
-          var endOffset = offset + tspan2.text.length;
-          if (targetOffset >= offset && targetOffset <= endOffset) {
-            map[i] = tspan2;
-            foundInChildren = true;
-            return;
-          }
-          offset = endOffset;
-        });
-
-        if (foundInChildren) return;
-      } else {
-        var endOffset = offset + tspan.text.length;
-        if (targetOffset >= offset && targetOffset <= endOffset) {
-          map[i] = tspan;
-          return;
-        }
-        offset = endOffset;
+    parent.visitChildren((inline) {
+      var tspan = inline as TextSpan;
+      if(i > 0 && tspan.children!= null) {
+        i -= tspan.children.length;
       }
-
-      i++;
-    });
+      offset += tspan.text.length;
+      
+      if(offset == targetOffset) {
+        map[i] = tspan;
+        return false;
+      }
+      if(offset > 0) {
+        i++;
+      }      
+      return true;
+    });    
     return map;
   }
 
@@ -137,6 +123,7 @@ class DummyHighlighter extends CodeEditingValueHighlighterBase {
         (a.selection != b.selection || a.composing != b.composing);
   }
 
+  @override
   CodeEditingValue addTextRemotely(
     CodeEditingValue oldValue,
     String newText,
