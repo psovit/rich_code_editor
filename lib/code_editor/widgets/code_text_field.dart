@@ -730,6 +730,7 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
   }
 
   void _handleSingleTapUp(TapUpDetails details) {
+    _codeEditableText?.hideToolbar();//ensure toolbar is hidden if there was initially created
     if (widget.selectionEnabled) {
       switch (Theme.of(context).platform) {
         case TargetPlatform.iOS:
@@ -1011,7 +1012,7 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
       onTap: () {
         if (!_effectiveController.selection.isValid)
           _effectiveController.selection = TextSelection.collapsed(offset: _effectiveController.textSpan.text.length);
-        _requestKeyboard();
+        _requestKeyboard();        
       },
       child: Listener(
         onPointerEnter: _handlePointerEnter,
