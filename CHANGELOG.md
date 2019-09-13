@@ -1,4 +1,4 @@
-## [0.2.8] - 13th September 2019
+## [0.2.9] - 13th September 2019
 * Fix for paste toolbar not hiding on the initial cursor position
 ## [0.2.8] - 6th September 2019
 * Fix for `getSpanForPosition` method implementation
