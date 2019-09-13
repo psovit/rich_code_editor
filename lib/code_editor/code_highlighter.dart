@@ -33,7 +33,7 @@ abstract class CodeEditingValueHighlighterBase {
       }
       offset += tspan.text.length;
       
-      if(offset == targetOffset) {
+      if(offset >= targetOffset) {
         map[i] = tspan;
         return false;
       }
