@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/widgets.dart' hide TextSelectionOverlay;
 import 'package:rich_code_editor/code_editor/code_highlighter.dart';
+import 'package:rich_code_editor/code_editor/utils/keyboard_utils.dart';
 import 'package:rich_code_editor/code_editor/widgets/code_editable.dart' as ce;
 import 'package:rich_code_editor/code_editor/widgets/code_editing_value.dart';
 import 'package:rich_code_editor/code_editor/widgets/code_selection.dart' as cs;
@@ -295,6 +296,8 @@ class CodeEditableText extends StatefulWidget {
     this.textInputAction,
     this.textCapitalization = TextCapitalization.none,
     this.onChanged,
+    this.onBackSpacePress,
+    this.onEnterPress,
     this.onEditingComplete,
     this.onSubmitted,
     this.onSelectionChanged,
@@ -660,6 +663,12 @@ class CodeEditableText extends StatefulWidget {
   ///    which are more specialized input change notifications.
   final ValueChanged<String> onChanged;
 
+  // Trigger when backspace was pressed with value before backspace was pressed
+  final ValueChanged<CodeEditingValue> onBackSpacePress;
+
+  // Trigger when enter was pressed with value before enter was pressed
+  final ValueChanged<CodeEditingValue> onEnterPress;
+
   /// {@template flutter.widgets.CodeEditableText.onEditingComplete}
   /// Called when the user submits editable content (e.g., user presses the "done"
   /// button on the keyboard).
@@ -989,10 +998,31 @@ class CodeEditableTextState extends State<CodeEditableText>
       return;
     }
 
+    if (_lastKnownRemoteCodeEditingValue.text == value.text &&
+        !pendingPasteUpdate) {
+      // There is no difference between this value and the last known value text.
+      return;
+    }
+
     if (value.text != _value.text) {
       _hideSelectionOverlayIfNeeded();
       _showCaretOnScreen();
     }
+
+    var oldValue = new CodeEditingValue(
+      value: new TextSpan(text: _value.text, style: widget.style),
+      selection: new TextSelection(
+        baseOffset: _value.selection.baseOffset ?? -1,
+        extentOffset: _value.selection.extentOffset ?? -1,
+        affinity: TextAffinity.downstream,
+        isDirectional: _value.selection.isDirectional ?? false,
+      ),
+      composing: new TextRange(
+        start: _value.composing.start ?? -1,
+        end: _value.composing.end ?? -1,
+      ),
+      remotelyEdited: false,
+    );
 
     var newValue = new CodeEditingValue(
       value: new TextSpan(text: value.text, style: widget.style),
@@ -1009,14 +1039,16 @@ class CodeEditableTextState extends State<CodeEditableText>
       remotelyEdited: false,
     );
 
-    if (_lastKnownRemoteCodeEditingValue.text == value.text &&
-        !pendingPasteUpdate) {
-      // There is no difference between this value and the last known value text.
-      return;
-    }
+    var pressedKey = KeyboardUtils.enterPressed(_value, newValue);
 
     _lastKnownRemoteCodeEditingValue = newValue;
-    _formatAndSetValue(newValue);
+    _formatAndSetValue(newValue);    
+
+    if (pressedKey == PressedKey.backSpace && widget.onBackSpacePress != null)
+      widget.onBackSpacePress(oldValue);
+
+    if (pressedKey == PressedKey.enter && widget.onEnterPress != null)
+      widget.onEnterPress(oldValue);
 
     // To keep the cursor from blinking while typing, we want to restart the
     // cursor timer every time a new character is typed.

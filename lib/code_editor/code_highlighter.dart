@@ -53,6 +53,10 @@ abstract class CodeEditingValueHighlighterBase {
     //implement as required in base class..
     return value;
   }
+
+  //Override the methods below to auto create/remove tab indentatations on enter and backspace actions
+  CodeEditingValue onEnterPress(CodeEditingValue oldValue, CodeEditingValue newValue) => newValue;
+  CodeEditingValue onBackSpacePress(CodeEditingValue oldValue, CodeEditingValue newValue) => newValue;
 }
 
 // This is a dummy implementation of syntax highlighter

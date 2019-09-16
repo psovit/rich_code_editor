@@ -159,6 +159,8 @@ class CodeTextField extends StatefulWidget {
     this.maxLength,
     this.maxLengthEnforced = true,
     this.onChanged,
+    this.onBackSpacePress, 
+    this.onEnterPress,
     this.onEditingComplete,
     this.onSubmitted,
     this.inputFormatters,
@@ -381,6 +383,12 @@ class CodeTextField extends StatefulWidget {
   ///  * [onEditingComplete], [onSubmitted], [onSelectionChanged]:
   ///    which are more specialized input change notifications.
   final ValueChanged<String> onChanged;
+
+  // Trigger when backspace was pressed with value before backspace was pressed
+  final ValueChanged<CodeEditingValue> onBackSpacePress;
+
+  // Trigger when enter was pressed with value before enter was pressed
+  final ValueChanged<CodeEditingValue> onEnterPress;
 
   /// {@macro flutter.widgets.CodeEditableText.onEditingComplete}
   final VoidCallback onEditingComplete;
@@ -966,6 +974,8 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
         selectionColor: themeData.textSelectionColor,
         selectionControls: widget.selectionEnabled ? textSelectionControls : null,
         onChanged: widget.onChanged,
+        onBackSpacePress: widget.onBackSpacePress,
+        onEnterPress: widget.onEnterPress,
         onSelectionChanged: _handleSelectionChanged,
         onEditingComplete: widget.onEditingComplete,
         onSubmitted: widget.onSubmitted,
