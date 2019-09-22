@@ -1,3 +1,6 @@
+## [0.3.0] - 13th September 2019
+* Delay rapid backspace presses to prevent potential UI freezing scenarios
+* Add Value Change notifier on paste action
 ## [0.2.9] - 13th September 2019
 * Fix for paste toolbar not hiding on the initial cursor position
 ## [0.2.8] - 6th September 2019
