@@ -298,6 +298,7 @@ class CodeEditableText extends StatefulWidget {
     this.onChanged,
     this.onBackSpacePress,
     this.onEnterPress,
+    this.onPasteAction,
     this.onEditingComplete,
     this.onSubmitted,
     this.onSelectionChanged,
@@ -307,6 +308,7 @@ class CodeEditableText extends StatefulWidget {
     this.cursorWidth = 2.0,
     this.cursorRadius,
     this.cursorOpacityAnimates = false,
+    this.hideKeyboardUntilTapped = false,
     this.cursorOffset,
     this.paintCursorAboveText = false,
     this.scrollPadding = const EdgeInsets.all(20.0),
@@ -598,6 +600,11 @@ class CodeEditableText extends StatefulWidget {
   /// {@endtemplate}
   final bool expands;
 
+  /// If this value is false, we do not show keyboard on the first load.
+  /// Only a tap will show the keyboard.
+  /// So the widget will display a cursor but not the keyboard
+  final bool hideKeyboardUntilTapped;
+
   /// {@template flutter.widgets.CodeEditableText.autofocus}
   /// Whether this text field should focus itself if nothing else is already
   /// focused.
@@ -668,6 +675,10 @@ class CodeEditableText extends StatefulWidget {
 
   // Trigger when enter was pressed with value before enter was pressed
   final ValueChanged<CodeEditingValue> onEnterPress;
+
+  /// Triggers after after paste action was performed on editor.
+  /// Use this callback to update line numbers if required.
+  final ValueChanged<CodeEditingValue> onPasteAction;
 
   /// {@template flutter.widgets.CodeEditableText.onEditingComplete}
   /// Called when the user submits editable content (e.g., user presses the "done"
@@ -906,6 +917,8 @@ class CodeEditableTextState extends State<CodeEditableText>
   @override
   bool get selectAllEnabled => true;
 
+  bool _enterPressed = false;
+
   // State lifecycle:
 
   @override
@@ -998,8 +1011,7 @@ class CodeEditableTextState extends State<CodeEditableText>
       return;
     }
 
-    if (_lastKnownRemoteCodeEditingValue.text == value.text &&
-        !pendingPasteUpdate) {
+    if (_lastKnownRemoteCodeEditingValue.text == value.text && !pendingPasteUpdate) {
       // There is no difference between this value and the last known value text.
       return;
     }
@@ -1039,16 +1051,18 @@ class CodeEditableTextState extends State<CodeEditableText>
       remotelyEdited: false,
     );
 
-    var pressedKey = KeyboardUtils.enterPressed(_value, newValue);
+    var pressedKey = KeyboardUtils.enterPressed(_value, newValue);    
 
     _lastKnownRemoteCodeEditingValue = newValue;
-    _formatAndSetValue(newValue);    
+    _formatAndSetValue(newValue);
+
+    if (pressedKey == PressedKey.enter && widget.onEnterPress != null) {
+      _enterPressed = true;
+      widget.onEnterPress(oldValue);
+    }    
 
     if (pressedKey == PressedKey.backSpace && widget.onBackSpacePress != null)
       widget.onBackSpacePress(oldValue);
-
-    if (pressedKey == PressedKey.enter && widget.onEnterPress != null)
-      widget.onEnterPress(oldValue);
 
     // To keep the cursor from blinking while typing, we want to restart the
     // cursor timer every time a new character is typed.
@@ -1185,10 +1199,26 @@ class CodeEditableTextState extends State<CodeEditableText>
     if (widget.onSubmitted != null) widget.onSubmitted(_value.text);
   }
 
-  void _updateRemoteEditingValueIfNeeded() {
+
+  DateTime _lastKeyPressedDuration;  
+  void _updateRemoteEditingValueIfNeeded() {    
     if (!_hasInputConnection) return;
     final CodeEditingValue localValue = _value;
     if (localValue == _lastKnownRemoteCodeEditingValue) return;
+
+    if (_lastKeyPressedDuration == null) {
+      _lastKeyPressedDuration = DateTime.now();
+    } else {
+      var diffDuration =
+          DateTime.now().difference(_lastKeyPressedDuration).inMilliseconds;
+      
+      if (diffDuration < 100 && !_enterPressed && !localValue.remotelyEdited) {
+        return;
+      }
+      _enterPressed = false;
+      _lastKeyPressedDuration = DateTime.now();
+    }
+
     _lastKnownRemoteCodeEditingValue = localValue;
     _textInputConnection.setEditingState(_toTextEditingValue(localValue));
   }
@@ -1243,6 +1273,12 @@ class CodeEditableTextState extends State<CodeEditableText>
         : caretRect.translate(offsetDiff, 0.0);
   }
 
+  bool _showKeyboard = false;
+
+  enableShowKeyboard() {
+    _showKeyboard = true;
+  }
+
   bool get _hasInputConnection =>
       _textInputConnection != null && _textInputConnection.attached;
 
@@ -1250,6 +1286,11 @@ class CodeEditableTextState extends State<CodeEditableText>
     if (widget.readOnly) {
       return;
     }
+
+    if (widget.hideKeyboardUntilTapped && !_showKeyboard) {
+      return;
+    }
+
     if (!_hasInputConnection) {
       final CodeEditingValue localValue = _value;
       _lastKnownRemoteCodeEditingValue = localValue;
@@ -1399,6 +1440,8 @@ class CodeEditableTextState extends State<CodeEditableText>
       if (_currentCaretRect == null || !_scrollController.hasClients) {
         return;
       }
+
+      if (_editableKey == null || _editableKey.currentContext == null) return;
       final double scrollOffsetForCaret =
           _getScrollOffsetForCaret(_currentCaretRect);
       _scrollController.animateTo(
@@ -1462,6 +1505,8 @@ class CodeEditableTextState extends State<CodeEditableText>
       _lastKnownRemoteCodeEditingValue = _parsed;
       _textInputConnection.setEditingState(_toTextEditingValue(_parsed));
       _value = _parsed;
+      pendingPasteUpdate = false;
+      if(widget.onPasteAction != null) widget.onPasteAction(value);
       return;
     }
 
@@ -1560,14 +1605,15 @@ class CodeEditableTextState extends State<CodeEditableText>
 
   void _didChangeCodeEditingValue() {
     //update editing value required to be called during paste interaction and remotely edited condition
-    if (_value != null) {
+    if (pendingPasteUpdate) {
+      _updateRemoteEditingValueIfNeeded();
+    } 
+    else if (_value != null) {
       if ((_value.remotelyEdited != null && _value.remotelyEdited) ||
           (_lastKnownRemoteCodeEditingValue != null &&
               _value.text == _lastKnownRemoteCodeEditingValue.text &&
-              _value.selection != _lastKnownRemoteCodeEditingValue.selection) ||
-          pendingPasteUpdate) {
+              _value.selection != _lastKnownRemoteCodeEditingValue.selection)) {
         _updateRemoteEditingValueIfNeeded();
-        pendingPasteUpdate = false;
       }
     }
 
@@ -1614,7 +1660,7 @@ class CodeEditableTextState extends State<CodeEditableText>
   /// This property is typically used to notify the renderer of input gestures
   /// when [ignorePointer] is true. See [RenderEditable.ignorePointer].
   ce.RenderEditableCode get renderEditable =>
-      _editableKey.currentContext.findRenderObject();
+      _editableKey?.currentContext?.findRenderObject();
 
   double get _devicePixelRatio =>
       MediaQuery.of(context).devicePixelRatio ?? 1.0;

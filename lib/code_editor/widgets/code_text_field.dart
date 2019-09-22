@@ -24,10 +24,13 @@ export 'package:flutter/services.dart' show TextInputType, TextInputAction, Text
 typedef InputCounterWidgetBuilder = Widget Function(
   /// The build context for the CodeTextField
   BuildContext context, {
+
   /// The length of the string currently in the input.
   @required int currentLength,
+
   /// The maximum string length that can be entered into the CodeTextField.
   @required int maxLength,
+
   /// Whether or not the CodeTextField is currently focused.  Mainly provided for
   /// the [liveRegion] parameter in the [Semantics] widget for accessibility.
   @required bool isFocused,
@@ -158,9 +161,11 @@ class CodeTextField extends StatefulWidget {
     this.expands = false,
     this.maxLength,
     this.maxLengthEnforced = true,
+    this.hideKeyboardUntilTapped = false,
     this.onChanged,
-    this.onBackSpacePress, 
+    this.onBackSpacePress,
     this.onEnterPress,
+    this.onPasteAction,
     this.onEditingComplete,
     this.onSubmitted,
     this.inputFormatters,
@@ -175,30 +180,33 @@ class CodeTextField extends StatefulWidget {
     this.onTap,
     this.buildCounter,
     this.scrollController,
-    this.scrollPhysics, 
+    this.scrollPhysics,
     @required this.highlighter,
-  }) : assert(textAlign != null),
-       assert(readOnly != null),
-       assert(autofocus != null),
-       assert(autocorrect != null),
-       assert(maxLengthEnforced != null),
-       assert(scrollPadding != null),
-       assert(dragStartBehavior != null),
-       assert(maxLines == null || maxLines > 0),
-       assert(minLines == null || minLines > 0),
-       assert(highlighter != null),
-       assert(
-         (maxLines == null) || (minLines == null) || (maxLines >= minLines),
-         'minLines can\'t be greater than maxLines',
-       ),
-       assert(expands != null),
-       assert(
-         !expands || (maxLines == null && minLines == null),
-         'minLines and maxLines must be null when expands is true.',
-       ),
-       assert(maxLength == null || maxLength == CodeTextField.noMaxLength || maxLength > 0),
-       keyboardType = keyboardType ?? (maxLines == 1 ? TextInputType.text : TextInputType.multiline),
-       super(key: key);
+  })  : assert(textAlign != null),
+        assert(readOnly != null),
+        assert(autofocus != null),
+        assert(autocorrect != null),
+        assert(maxLengthEnforced != null),
+        assert(scrollPadding != null),
+        assert(dragStartBehavior != null),
+        assert(maxLines == null || maxLines > 0),
+        assert(minLines == null || minLines > 0),
+        assert(highlighter != null),
+        assert(
+          (maxLines == null) || (minLines == null) || (maxLines >= minLines),
+          'minLines can\'t be greater than maxLines',
+        ),
+        assert(expands != null),
+        assert(
+          !expands || (maxLines == null && minLines == null),
+          'minLines and maxLines must be null when expands is true.',
+        ),
+        assert(maxLength == null ||
+            maxLength == CodeTextField.noMaxLength ||
+            maxLength > 0),
+        keyboardType = keyboardType ??
+            (maxLines == 1 ? TextInputType.text : TextInputType.multiline),
+        super(key: key);
 
   /// Controls the text being edited.
   ///
@@ -374,6 +382,11 @@ class CodeTextField extends StatefulWidget {
   /// [maxLength] is exceeded.
   final bool maxLengthEnforced;
 
+  /// If this value is false, we do not show keyboard on the first load.
+  /// Only after a tap, the keyboard will become.
+  /// So the widget will display a cursor but not the keyboard
+  final bool hideKeyboardUntilTapped;
+
   /// {@macro flutter.widgets.CodeEditableText.onChanged}
   ///
   /// See also:
@@ -389,6 +402,10 @@ class CodeTextField extends StatefulWidget {
 
   // Trigger when enter was pressed with value before enter was pressed
   final ValueChanged<CodeEditingValue> onEnterPress;
+
+  /// Triggers after after paste action was performed on editor.
+  /// Use this callback to update line numbers if required.
+  final ValueChanged<CodeEditingValue> onPasteAction;
 
   /// {@macro flutter.widgets.CodeEditableText.onEditingComplete}
   final VoidCallback onEditingComplete;
@@ -499,77 +516,123 @@ class CodeTextField extends StatefulWidget {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty<CodeEditingController>('controller', controller, defaultValue: null));
-    properties.add(DiagnosticsProperty<FocusNode>('focusNode', focusNode, defaultValue: null));
-    properties.add(DiagnosticsProperty<bool>('enabled', enabled, defaultValue: null));
-    properties.add(DiagnosticsProperty<InputDecoration>('decoration', decoration, defaultValue: const InputDecoration()));
-    properties.add(DiagnosticsProperty<TextInputType>('keyboardType', keyboardType, defaultValue: TextInputType.text));
-    properties.add(DiagnosticsProperty<TextStyle>('style', style, defaultValue: null));
-    properties.add(DiagnosticsProperty<bool>('autofocus', autofocus, defaultValue: false));
-    properties.add(DiagnosticsProperty<bool>('autocorrect', autocorrect, defaultValue: true));
+    properties.add(DiagnosticsProperty<CodeEditingController>(
+        'controller', controller,
+        defaultValue: null));
+    properties.add(DiagnosticsProperty<FocusNode>('focusNode', focusNode,
+        defaultValue: null));
+    properties
+        .add(DiagnosticsProperty<bool>('enabled', enabled, defaultValue: null));
+    properties.add(DiagnosticsProperty<InputDecoration>(
+        'decoration', decoration,
+        defaultValue: const InputDecoration()));
+    properties.add(DiagnosticsProperty<TextInputType>(
+        'keyboardType', keyboardType,
+        defaultValue: TextInputType.text));
+    properties.add(
+        DiagnosticsProperty<TextStyle>('style', style, defaultValue: null));
+    properties.add(
+        DiagnosticsProperty<bool>('autofocus', autofocus, defaultValue: false));
+    properties.add(DiagnosticsProperty<bool>('autocorrect', autocorrect,
+        defaultValue: true));
     properties.add(IntProperty('maxLines', maxLines, defaultValue: 1));
     properties.add(IntProperty('minLines', minLines, defaultValue: null));
-    properties.add(DiagnosticsProperty<bool>('expands', expands, defaultValue: false));
+    properties.add(
+        DiagnosticsProperty<bool>('expands', expands, defaultValue: false));
     properties.add(IntProperty('maxLength', maxLength, defaultValue: null));
-    properties.add(FlagProperty('maxLengthEnforced', value: maxLengthEnforced, defaultValue: true, ifFalse: 'maxLength not enforced'));
-    properties.add(EnumProperty<TextInputAction>('textInputAction', textInputAction, defaultValue: null));
-    properties.add(EnumProperty<TextCapitalization>('textCapitalization', textCapitalization, defaultValue: TextCapitalization.none));
-    properties.add(EnumProperty<TextAlign>('textAlign', textAlign, defaultValue: TextAlign.start));
-    properties.add(DiagnosticsProperty<TextAlignVertical>('textAlignVertical', textAlignVertical, defaultValue: null));
-    properties.add(EnumProperty<TextDirection>('textDirection', textDirection, defaultValue: null));
-    properties.add(DoubleProperty('cursorWidth', cursorWidth, defaultValue: 2.0));
-    properties.add(DiagnosticsProperty<Radius>('cursorRadius', cursorRadius, defaultValue: null));
-    properties.add(ColorProperty('cursorColor', cursorColor, defaultValue: null));
-    properties.add(DiagnosticsProperty<Brightness>('keyboardAppearance', keyboardAppearance, defaultValue: null));
-    properties.add(DiagnosticsProperty<EdgeInsetsGeometry>('scrollPadding', scrollPadding, defaultValue: const EdgeInsets.all(20.0)));
-    properties.add(FlagProperty('selectionEnabled', value: selectionEnabled, defaultValue: true, ifFalse: 'selection disabled'));
-    properties.add(DiagnosticsProperty<ScrollController>('scrollController', scrollController, defaultValue: null));
-    properties.add(DiagnosticsProperty<ScrollPhysics>('scrollPhysics', scrollPhysics, defaultValue: null));
+    properties.add(FlagProperty('maxLengthEnforced',
+        value: maxLengthEnforced,
+        defaultValue: true,
+        ifFalse: 'maxLength not enforced'));
+    properties.add(EnumProperty<TextInputAction>(
+        'textInputAction', textInputAction,
+        defaultValue: null));
+    properties.add(EnumProperty<TextCapitalization>(
+        'textCapitalization', textCapitalization,
+        defaultValue: TextCapitalization.none));
+    properties.add(EnumProperty<TextAlign>('textAlign', textAlign,
+        defaultValue: TextAlign.start));
+    properties.add(DiagnosticsProperty<TextAlignVertical>(
+        'textAlignVertical', textAlignVertical,
+        defaultValue: null));
+    properties.add(EnumProperty<TextDirection>('textDirection', textDirection,
+        defaultValue: null));
+    properties
+        .add(DoubleProperty('cursorWidth', cursorWidth, defaultValue: 2.0));
+    properties.add(DiagnosticsProperty<Radius>('cursorRadius', cursorRadius,
+        defaultValue: null));
+    properties
+        .add(ColorProperty('cursorColor', cursorColor, defaultValue: null));
+    properties.add(DiagnosticsProperty<Brightness>(
+        'keyboardAppearance', keyboardAppearance,
+        defaultValue: null));
+    properties.add(DiagnosticsProperty<EdgeInsetsGeometry>(
+        'scrollPadding', scrollPadding,
+        defaultValue: const EdgeInsets.all(20.0)));
+    properties.add(FlagProperty('selectionEnabled',
+        value: selectionEnabled,
+        defaultValue: true,
+        ifFalse: 'selection disabled'));
+    properties.add(DiagnosticsProperty<ScrollController>(
+        'scrollController', scrollController,
+        defaultValue: null));
+    properties.add(DiagnosticsProperty<ScrollPhysics>(
+        'scrollPhysics', scrollPhysics,
+        defaultValue: null));
   }
 }
 
-class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveClientMixin {
-  final GlobalKey<CodeEditableTextState> _codeEditableTextKey = GlobalKey<CodeEditableTextState>();
+class CodeTextFieldState extends State<CodeTextField>
+    with AutomaticKeepAliveClientMixin {
+  final GlobalKey<CodeEditableTextState> _codeEditableTextKey =
+      GlobalKey<CodeEditableTextState>();
 
   Set<InteractiveInkFeature> _splashes;
   InteractiveInkFeature _currentSplash;
 
   CodeEditingController _controller;
-  CodeEditingController get _effectiveController => widget.controller ?? _controller;
+  CodeEditingController get _effectiveController =>
+      widget.controller ?? _controller;
 
   FocusNode _focusNode;
-  FocusNode get _effectiveFocusNode => widget.focusNode ?? (_focusNode ??= FocusNode());
+  FocusNode get _effectiveFocusNode =>
+      widget.focusNode ?? (_focusNode ??= FocusNode());
 
   bool _isHovering = false;
 
-  bool get needsCounter => widget.maxLength != null
-    && widget.decoration != null
-    && widget.decoration.counterText == null;
+  bool _showKeyboard = false;
+
+  bool get needsCounter =>
+      widget.maxLength != null &&
+      widget.decoration != null &&
+      widget.decoration.counterText == null;
 
   bool _shouldShowSelectionToolbar = true;
 
   bool _showSelectionHandles = false;
 
   InputDecoration _getEffectiveDecoration() {
-    final MaterialLocalizations localizations = MaterialLocalizations.of(context);
+    final MaterialLocalizations localizations =
+        MaterialLocalizations.of(context);
     final ThemeData themeData = Theme.of(context);
-    final InputDecoration effectiveDecoration = (widget.decoration ?? const InputDecoration())
-      .applyDefaults(themeData.inputDecorationTheme)
-      .copyWith(
-        enabled: widget.enabled,
-        hintMaxLines: widget.decoration?.hintMaxLines ?? widget.maxLines,
-      );
+    final InputDecoration effectiveDecoration =
+        (widget.decoration ?? const InputDecoration())
+            .applyDefaults(themeData.inputDecorationTheme)
+            .copyWith(
+              enabled: widget.enabled,
+              hintMaxLines: widget.decoration?.hintMaxLines ?? widget.maxLines,
+            );
 
     // No need to build anything if counter or counterText were given directly.
-    if (effectiveDecoration.counter != null || effectiveDecoration.counterText != null)
-      return effectiveDecoration;
+    if (effectiveDecoration.counter != null ||
+        effectiveDecoration.counterText != null) return effectiveDecoration;
 
     // If buildCounter was provided, use it to generate a counter widget.
     Widget counter;
     final int currentLength = _effectiveController.value.text.runes.length;
-    if (effectiveDecoration.counter == null
-        && effectiveDecoration.counterText == null
-        && widget.buildCounter != null) {
+    if (effectiveDecoration.counter == null &&
+        effectiveDecoration.counterText == null &&
+        widget.buildCounter != null) {
       final bool isFocused = _effectiveFocusNode.hasFocus;
       counter = Semantics(
         container: true,
@@ -591,8 +654,7 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
   @override
   void initState() {
     super.initState();
-    if (widget.controller == null)
-      _controller = CodeEditingController();
+    if (widget.controller == null) _controller = CodeEditingController();
   }
 
   @override
@@ -603,12 +665,13 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
     else if (widget.controller != null && oldWidget.controller == null)
       _controller = null;
     final bool isEnabled = widget.enabled ?? widget.decoration?.enabled ?? true;
-    final bool wasEnabled = oldWidget.enabled ?? oldWidget.decoration?.enabled ?? true;
+    final bool wasEnabled =
+        oldWidget.enabled ?? oldWidget.decoration?.enabled ?? true;
     if (wasEnabled && !isEnabled) {
       _effectiveFocusNode.unfocus();
     }
     if (_effectiveFocusNode.hasFocus && widget.readOnly != oldWidget.readOnly) {
-      if(_effectiveController.selection.isCollapsed) {
+      if (_effectiveController.selection.isCollapsed) {
         _showSelectionHandles = !widget.readOnly;
       }
     }
@@ -620,7 +683,8 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
     super.dispose();
   }
 
-  CodeEditableTextState get _codeEditableText => _codeEditableTextKey.currentState;
+  CodeEditableTextState get _codeEditableText =>
+      _codeEditableTextKey.currentState;
 
   void _requestKeyboard() {
     _codeEditableText?.requestKeyboard();
@@ -629,25 +693,22 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
   bool _shouldShowSelectionHandles(ce.SelectionChangedCause cause) {
     // When the text field is activated by something that doesn't trigger the
     // selection overlay, we shouldn't show the handles either.
-    if (!_shouldShowSelectionToolbar)
-      return false;
+    if (!_shouldShowSelectionToolbar) return false;
 
-    if (cause == SelectionChangedCause.keyboard)
-      return false;
+    if (cause == SelectionChangedCause.keyboard) return false;
 
     if (widget.readOnly && _effectiveController.selection.isCollapsed)
       return false;
 
-    if (cause == SelectionChangedCause.longPress)
-      return true;
+    if (cause == SelectionChangedCause.longPress) return true;
 
-    if (_effectiveController.textSpan.text.isNotEmpty)
-      return true;
+    if (_effectiveController.textSpan.text.isNotEmpty) return true;
 
     return false;
   }
 
-  void _handleSelectionChanged(TextSelection selection, ce.SelectionChangedCause cause) {
+  void _handleSelectionChanged(
+      TextSelection selection, ce.SelectionChangedCause cause) {
     final bool willShowSelectionHandles = _shouldShowSelectionHandles(cause);
     if (willShowSelectionHandles != _showSelectionHandles) {
       setState(() {
@@ -663,7 +724,7 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
         return;
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
-        // Do nothing.
+      // Do nothing.
     }
   }
 
@@ -674,53 +735,18 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
     }
   }
 
-  InteractiveInkFeature _createInkFeature(Offset globalPosition) {
-    final MaterialInkController inkController = Material.of(context);
-    final ThemeData themeData = Theme.of(context);
-    final BuildContext editableContext = _codeEditableTextKey.currentContext;
-    final RenderBox referenceBox = InputDecorator.containerOf(editableContext) ?? editableContext.findRenderObject();
-    final Offset position = referenceBox.globalToLocal(globalPosition);
-    final Color color = themeData.splashColor;
-
-    InteractiveInkFeature splash;
-    void handleRemoved() {
-      if (_splashes != null) {
-        assert(_splashes.contains(splash));
-        _splashes.remove(splash);
-        if (_currentSplash == splash)
-          _currentSplash = null;
-        updateKeepAlive();
-      } // else we're probably in deactivate()
-    }
-
-    splash = themeData.splashFactory.create(
-      controller: inkController,
-      referenceBox: referenceBox,
-      position: position,
-      color: color,
-      containedInkWell: true,
-      // TODO(hansmuller): splash clip borderRadius should match the input decorator's border.
-      borderRadius: BorderRadius.zero,
-      onRemoved: handleRemoved,
-      textDirection: Directionality.of(context),
-    );
-
-    return splash;
-  }
-
-  ce.RenderEditableCode get _renderEditable => _codeEditableTextKey.currentState.renderEditable;
+  ce.RenderEditableCode get _renderEditable =>
+      _codeEditableTextKey.currentState.renderEditable;
 
   void _handleTapDown(TapDownDetails details) {
     _renderEditable.handleTapDown(details);
-    _startSplash(details.globalPosition);
 
     // The selection overlay should only be shown when the user is interacting
     // through a touch screen (via either a finger or a stylus). A mouse shouldn't
     // trigger the selection overlay.
     // For backwards-compatibility, we treat a null kind the same as touch.
     final PointerDeviceKind kind = details.kind;
-    _shouldShowSelectionToolbar =
-        kind == null ||
+    _shouldShowSelectionToolbar = kind == null ||
         kind == PointerDeviceKind.touch ||
         kind == PointerDeviceKind.stylus;
   }
@@ -738,7 +764,8 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
   }
 
   void _handleSingleTapUp(TapUpDetails details) {
-    _codeEditableText?.hideToolbar();//ensure toolbar is hidden if there was initially created
+    _codeEditableText?.enableShowKeyboard();
+    _codeEditableText?.hideToolbar(); //ensure toolbar is hidden if there was initially created
     if (widget.selectionEnabled) {
       switch (Theme.of(context).platform) {
         case TargetPlatform.iOS:
@@ -751,13 +778,10 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
       }
     }
     _requestKeyboard();
-    _confirmCurrentSplash();
-    if (widget.onTap != null)
-      widget.onTap();
+    if (widget.onTap != null) widget.onTap();
   }
 
   void _handleSingleTapCancel() {
-    _cancelCurrentSplash();
   }
 
   void _handleSingleLongTapStart(LongPressStartDetails details) {
@@ -776,7 +800,6 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
           break;
       }
     }
-    _confirmCurrentSplash();
   }
 
   void _handleSingleLongTapMoveUpdate(LongPressMoveUpdateDetails details) {
@@ -821,37 +844,17 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
       from: details.globalPosition,
       cause: ce.SelectionChangedCause.drag,
     );
-    _startSplash(details.globalPosition);
   }
 
   void _handleMouseDragSelectionUpdate(
-      DragStartDetails startDetails,
-      DragUpdateDetails updateDetails,
+    DragStartDetails startDetails,
+    DragUpdateDetails updateDetails,
   ) {
     _renderEditable.selectPositionAt(
       from: startDetails.globalPosition,
       to: updateDetails.globalPosition,
       cause: ce.SelectionChangedCause.drag,
     );
-  }
-
-  void _startSplash(Offset globalPosition) {
-    if (_effectiveFocusNode.hasFocus)
-      return;
-    final InteractiveInkFeature splash = _createInkFeature(globalPosition);
-    _splashes ??= HashSet<InteractiveInkFeature>();
-    _splashes.add(splash);
-    _currentSplash = splash;
-    updateKeepAlive();
-  }
-
-  void _confirmCurrentSplash() {
-    _currentSplash?.confirm();
-    _currentSplash = null;
-  }
-
-  void _cancelCurrentSplash() {
-    _currentSplash?.cancel();
   }
 
   @override
@@ -862,8 +865,7 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
     if (_splashes != null) {
       final Set<InteractiveInkFeature> splashes = _splashes;
       _splashes = null;
-      for (InteractiveInkFeature splash in splashes)
-        splash.dispose();
+      for (InteractiveInkFeature splash in splashes) splash.dispose();
       _currentSplash = null;
     }
     assert(_currentSplash == null);
@@ -900,17 +902,20 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
     // assert(debugCheckHasMaterialLocalizations(context));
     assert(debugCheckHasDirectionality(context));
     assert(
-      !(widget.style != null && widget.style.inherit == false &&
-        (widget.style.fontSize == null || widget.style.textBaseline == null)),
+      !(widget.style != null &&
+          widget.style.inherit == false &&
+          (widget.style.fontSize == null || widget.style.textBaseline == null)),
       'inherit false style must supply fontSize and textBaseline',
     );
 
     final ThemeData themeData = Theme.of(context);
     final TextStyle style = themeData.textTheme.subhead.merge(widget.style);
-    final Brightness keyboardAppearance = widget.keyboardAppearance ?? themeData.primaryColorBrightness;
+    final Brightness keyboardAppearance =
+        widget.keyboardAppearance ?? themeData.primaryColorBrightness;
     final CodeEditingController controller = _effectiveController;
     final FocusNode focusNode = _effectiveFocusNode;
-    final List<TextInputFormatter> formatters = widget.inputFormatters ?? <TextInputFormatter>[];
+    final List<TextInputFormatter> formatters =
+        widget.inputFormatters ?? <TextInputFormatter>[];
     if (widget.maxLength != null && widget.maxLengthEnforced)
       formatters.add(LengthLimitingTextInputFormatter(widget.maxLength));
 
@@ -937,13 +942,15 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
         // This value is in device pixels, not logical pixels as is typically used
         // throughout the codebase.
         const int _iOSHorizontalOffset = -2;
-        cursorOffset = Offset(_iOSHorizontalOffset / MediaQuery.of(context).devicePixelRatio, 0);
+        cursorOffset = Offset(
+            _iOSHorizontalOffset / MediaQuery.of(context).devicePixelRatio, 0);
         break;
 
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
         forcePressEnabled = false;
-        textSelectionControls = ms.MaterialTextSelectionControls(_pasteHandler);// ms.materialTextSelectionControls;
+        textSelectionControls = ms.MaterialTextSelectionControls(
+            _pasteHandler); // ms.materialTextSelectionControls;
         paintCursorAboveText = false;
         cursorOpacityAnimates = false;
         cursorColor ??= themeData.cursorColor;
@@ -972,10 +979,13 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
         minLines: widget.minLines,
         expands: widget.expands,
         selectionColor: themeData.textSelectionColor,
-        selectionControls: widget.selectionEnabled ? textSelectionControls : null,
+        selectionControls:
+            widget.selectionEnabled ? textSelectionControls : null,
         onChanged: widget.onChanged,
+        hideKeyboardUntilTapped: widget.hideKeyboardUntilTapped,
         onBackSpacePress: widget.onBackSpacePress,
         onEnterPress: widget.onEnterPress,
+        onPasteAction: widget.onPasteAction,
         onSelectionChanged: _handleSelectionChanged,
         onEditingComplete: widget.onEditingComplete,
         onSubmitted: widget.onSubmitted,
@@ -1000,7 +1010,7 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
 
     if (widget.decoration != null) {
       child = AnimatedBuilder(
-        animation: Listenable.merge(<Listenable>[ focusNode, controller ]),
+        animation: Listenable.merge(<Listenable>[focusNode, controller]),
         builder: (BuildContext context, Widget child) {
           return InputDecorator(
             decoration: _getEffectiveDecoration(),
@@ -1021,8 +1031,9 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
     return Semantics(
       onTap: () {
         if (!_effectiveController.selection.isValid)
-          _effectiveController.selection = TextSelection.collapsed(offset: _effectiveController.textSpan.text.length);
-        _requestKeyboard();        
+          _effectiveController.selection = TextSelection.collapsed(
+              offset: _effectiveController.textSpan.text.length);
+        _requestKeyboard();
       },
       child: Listener(
         onPointerEnter: _handlePointerEnter,
@@ -1031,7 +1042,8 @@ class CodeTextFieldState extends State<CodeTextField> with AutomaticKeepAliveCli
           ignoring: !(widget.enabled ?? widget.decoration?.enabled ?? true),
           child: TextSelectionGestureDetector(
             onTapDown: _handleTapDown,
-            onForcePressStart: forcePressEnabled ? _handleForcePressStarted : null,
+            onForcePressStart:
+                forcePressEnabled ? _handleForcePressStarted : null,
             onSingleTapUp: _handleSingleTapUp,
             onSingleTapCancel: _handleSingleTapCancel,
             onSingleLongTapStart: _handleSingleLongTapStart,
