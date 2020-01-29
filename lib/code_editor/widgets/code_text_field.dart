@@ -718,7 +718,6 @@ class CodeTextFieldState extends State<CodeTextField>
 
     switch (Theme.of(context).platform) {
       case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
         if (cause == SelectionChangedCause.longPress) {
           _codeEditableText?.bringIntoView(selection.base);
         }
@@ -770,7 +769,6 @@ class CodeTextFieldState extends State<CodeTextField>
     if (widget.selectionEnabled) {
       switch (Theme.of(context).platform) {
         case TargetPlatform.iOS:
-        case TargetPlatform.macOS:
           _renderEditable.selectWordEdge(cause: ce.SelectionChangedCause.tap);
           break;
         case TargetPlatform.android:
@@ -790,7 +788,6 @@ class CodeTextFieldState extends State<CodeTextField>
     if (widget.selectionEnabled) {
       switch (Theme.of(context).platform) {
         case TargetPlatform.iOS:
-        case TargetPlatform.macOS:
           _renderEditable.selectPositionAt(
             from: details.globalPosition,
             cause: ce.SelectionChangedCause.longPress,
@@ -809,7 +806,6 @@ class CodeTextFieldState extends State<CodeTextField>
     if (widget.selectionEnabled) {
       switch (Theme.of(context).platform) {
         case TargetPlatform.iOS:
-        case TargetPlatform.macOS:
           _renderEditable.selectPositionAt(
             from: details.globalPosition,
             cause: ce.SelectionChangedCause.longPress,
@@ -933,7 +929,6 @@ class CodeTextFieldState extends State<CodeTextField>
 
     switch (themeData.platform) {
       case TargetPlatform.iOS:
-      case TargetPlatform.macOS:
         forcePressEnabled = true;
         textSelectionControls = textSelectionControls;
         paintCursorAboveText = true;
