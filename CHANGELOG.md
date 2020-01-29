@@ -1,3 +1,5 @@
+## [0.4.0] - 29th January 2020
+* Flutter version upgrade: Flutter 1.14.7-pre.19
 ## [0.3.0] - 13th September 2019
 * Delay rapid backspace presses to prevent potential UI freezing scenarios
 * Add Value Change notifier on paste action
