@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/rendering.dart' show ViewportOffset, RenderEditable;
 import 'package:flutter/scheduler.dart';
@@ -1460,7 +1461,7 @@ class CodeEditableTextState extends State<CodeEditableText>
             .height;
         final double interactiveHandleHeight = math.max(
           handleHeight,
-          kMinInteractiveSize,
+          kMinInteractiveDimension,
         );
         final Offset anchor =
             _selectionOverlay.selectionControls.getHandleAnchor(
@@ -1764,6 +1765,19 @@ class CodeEditableTextState extends State<CodeEditableText>
         selection: cs.TextSelection.fromPosition(
             cs.TextPosition(offset: value.text.length)));
   }
+
+  @override
+  void connectionClosed() {
+    if (_hasInputConnection) {
+      _textInputConnection.connectionClosedReceived();
+      _textInputConnection = null;
+      _lastKnownRemoteCodeEditingValue = null;
+      _finalizeEditing(true);
+    }
+  }
+
+  @override
+  TextEditingValue get currentTextEditingValue => _toTextEditingValue(_value);
 }
 
 class _Editable extends LeafRenderObjectWidget {

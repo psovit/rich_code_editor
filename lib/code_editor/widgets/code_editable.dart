@@ -384,6 +384,7 @@ class RenderEditableCode extends RenderBox {
       case TargetPlatform.android:
         break;
       case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
       case TargetPlatform.fuchsia:
         return;
     }
