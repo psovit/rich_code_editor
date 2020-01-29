@@ -1,6 +1,6 @@
 name: rich_code_editor
 description: Now create your own rich code editor with syntax highlight support in Flutter.
-version: 0.4.0
+version: 0.4.1
 homepage: https://github.com/psovit/rich_code_editor
 
 environment:

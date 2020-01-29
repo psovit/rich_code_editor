@@ -1,3 +1,5 @@
+## [0.4.1] - 29th January 2020
+* Flutter version downgrade to stable version: Flutter 1.12.13+hotfix.7
 ## [0.4.0] - 29th January 2020
 * Flutter version upgrade: Flutter 1.14.7-pre.19
 ## [0.3.0] - 13th September 2019
