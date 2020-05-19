@@ -1,3 +1,8 @@
+## [1.0.0] - 19th May 2020
+### Major Breaking Changes from Previous versions
+* Rebuilt code editor from ground up.
+* Replaced implementations for Code Highlighter, Text Controller and Code Editable fields.
+* Renamed previously used widgets entirely.
 ## [0.4.1] - 29th January 2020
 * Flutter version downgrade to stable version: Flutter 1.12.13+hotfix.7
 ## [0.4.0] - 29th January 2020

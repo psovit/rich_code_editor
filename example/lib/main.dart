@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:rich_code_editor/rich_code_editor.dart';
-import 'package:rich_code_editor/code_editor/widgets/code_text_field.dart';
+import 'package:rich_code_editor/exports.dart';
+
+import 'DummySyntaxHighlighter.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -33,10 +34,15 @@ class DemoCodeEditor extends StatefulWidget {
 }
 
 class _DemoCodeEditorState extends State<DemoCodeEditor> {
-  // GlobalKey<RichTextFieldState> _richTextFieldState =
-  //     new GlobalKey<RichTextFieldState>();
+  RichCodeEditingController _rec;
+  SyntaxHighlighterBase _syntaxHighlighterBase;
 
-  CodeEditingController _cec = CodeEditingController();
+  @override
+  void initState() {
+    super.initState();
+    _syntaxHighlighterBase = DummySyntaxHighlighter();
+    _rec = RichCodeEditingController(_syntaxHighlighterBase);
+  }
 
   @override
   void dispose() {
@@ -44,48 +50,34 @@ class _DemoCodeEditorState extends State<DemoCodeEditor> {
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
       appBar: new AppBar(
         title: new Text("Dummy Editor"),
       ),
-      body: new Container(
-        child: new Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: <Widget>[
-            new Expanded(
-              child: new Container(
-                padding: new EdgeInsets.all(16.0),
-                child: new Container(
-                    padding: EdgeInsets.all(24.0),
-                    decoration: new BoxDecoration(
-                        border: new Border.all(
-                            color: Theme.of(context).primaryColor)),
-                    child: PageView(
-                      children: <Widget>[
-                        new CodeTextField(
-                          //keyboard type is set to email address in order to
-                          //prevent auto text correction after typing.
-                          //Since the autoCorrect:false property isn't working, we use this hack here.
-                          //https://github.com/flutter/flutter/issues/22828
-                          keyboardType: TextInputType.emailAddress,
-                          highlighter: DummyHighlighter(),
-                          onChanged: (t) {},
-                          controller: _cec,
-                          maxLines: null,
-                          decoration: null,
-                          autofocus: true,
-                          style: TextStyle(fontSize: 16.0, color: Colors.black),
-                        ),
-                      ],
-                    )),
-              ),
-            ),
-          ],
-        ),
-      ),
+      body: Container(
+          height: 300.0,
+          margin: EdgeInsets.all(24.0),
+          padding: EdgeInsets.all(24.0),
+          decoration:
+              new BoxDecoration(border: new Border.all(color: Colors.grey)),
+          child: RichCodeField(
+            autofocus: true,
+            controller: _rec,
+            textCapitalization: TextCapitalization.none,
+            decoration: null,
+            syntaxHighlighter: _syntaxHighlighterBase,
+            maxLines: null,
+            onChanged: (String s) {},
+            onBackSpacePress: (TextEditingValue oldValue) {},
+            onEnterPress: (TextEditingValue oldValue) {
+              var result = _syntaxHighlighterBase.onEnterPress(oldValue);
+              if (result != null) {
+                _rec.value = result;
+              }
+            },
+          )),
     );
   }
 }
