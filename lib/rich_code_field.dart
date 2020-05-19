@@ -2,39 +2,114 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:collection';
+import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' hide materialTextSelectionControls;
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart' hide TextSelectionControls;
-import 'package:rich_code_editor/code_editor/code_highlighter.dart';
-import 'package:rich_code_editor/code_editor/widgets/code_selection.dart' as cs;
+import 'package:flutter/widgets.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
-import 'package:rich_code_editor/code_editor/widgets/code_editable.dart' as ce;
-import 'package:rich_code_editor/code_editor/widgets/material_selection.dart' as ms;
 
-import 'code_editable_text.dart';
-import 'code_editing_value.dart';
+import 'exports.dart';
 
 export 'package:flutter/services.dart' show TextInputType, TextInputAction, TextCapitalization;
 
-/// Signature for the [CodeTextField.buildCounter] callback.
+/// Signature for the [RichCodeField.buildCounter] callback.
 typedef InputCounterWidgetBuilder = Widget Function(
-  /// The build context for the CodeTextField
+  /// The build context for the PzCodeField
   BuildContext context, {
-
   /// The length of the string currently in the input.
   @required int currentLength,
-
-  /// The maximum string length that can be entered into the CodeTextField.
+  /// The maximum string length that can be entered into the PzCodeField.
   @required int maxLength,
-
-  /// Whether or not the CodeTextField is currently focused.  Mainly provided for
+  /// Whether or not the PzCodeField is currently focused.  Mainly provided for
   /// the [liveRegion] parameter in the [Semantics] widget for accessibility.
   @required bool isFocused,
 });
+
+class _PzCodeFieldSelectionGestureDetectorBuilder extends TextSelectionGestureDetectorBuilder {
+  _PzCodeFieldSelectionGestureDetectorBuilder({
+    @required _RichCodeFieldState state,
+  }) : _state = state,
+       super(delegate: state);
+
+  final _RichCodeFieldState _state;
+
+  @override
+  void onForcePressStart(ForcePressDetails details) {
+    super.onForcePressStart(details);
+    if (delegate.selectionEnabled && shouldShowSelectionToolbar) {
+      editableText.showToolbar();
+    }
+  }
+
+  @override
+  void onForcePressEnd(ForcePressDetails details) {
+    // Not required.
+  }
+
+  @override
+  void onSingleLongTapMoveUpdate(LongPressMoveUpdateDetails details) {
+    if (delegate.selectionEnabled) {
+      switch (Theme.of(_state.context).platform) {
+        case TargetPlatform.iOS:
+          renderEditable.selectPositionAt(
+            from: details.globalPosition,
+            cause: SelectionChangedCause.longPress,
+          );
+          break;
+        case TargetPlatform.android:
+        case TargetPlatform.fuchsia:
+          renderEditable.selectWordsInRange(
+            from: details.globalPosition - details.offsetFromOrigin,
+            to: details.globalPosition,
+            cause: SelectionChangedCause.longPress,
+          );
+          break;
+      }
+    }
+  }
+
+  @override
+  void onSingleTapUp(TapUpDetails details) {
+    editableText.hideToolbar();
+    if (delegate.selectionEnabled) {
+      switch (Theme.of(_state.context).platform) {
+        case TargetPlatform.iOS:
+          renderEditable.selectWordEdge(cause: SelectionChangedCause.tap);
+          break;
+        case TargetPlatform.android:
+        case TargetPlatform.fuchsia:
+          renderEditable.selectPosition(cause: SelectionChangedCause.tap);
+          break;
+      }
+    }
+    _state._requestKeyboard();
+    if (_state.widget.onTap != null)
+      _state.widget.onTap();
+  }
+
+  @override
+  void onSingleLongTapStart(LongPressStartDetails details) {
+    if (delegate.selectionEnabled) {
+      switch (Theme.of(_state.context).platform) {
+        case TargetPlatform.iOS:
+          renderEditable.selectPositionAt(
+            from: details.globalPosition,
+            cause: SelectionChangedCause.longPress,
+          );
+          break;
+        case TargetPlatform.android:
+        case TargetPlatform.fuchsia:
+          renderEditable.selectWord(cause: SelectionChangedCause.longPress);
+          Feedback.forLongPress(_state.context);
+          break;
+      }
+    }
+  }
+}
 
 /// A material design text field.
 ///
@@ -59,23 +134,23 @@ typedef InputCounterWidgetBuilder = Widget Function(
 /// extra padding introduced by the decoration to save space for the labels.
 ///
 /// If [decoration] is non-null (which is the default), the text field requires
-/// one of its ancestors to be a [Material] widget. When the [CodeTextField] is
-/// tapped an ink splash that paints on the material is triggered, see
-/// [ThemeData.splashFactory].
+/// one of its ancestors to be a [Material] widget.
 ///
-/// To integrate the [CodeTextField] into a [Form] with other [FormField] widgets,
+/// To integrate the [RichCodeField] into a [Form] with other [FormField] widgets,
 /// consider using [TextFormField].
 ///
-/// Remember to [dispose] of the [CodeEditingController] when it is no longer needed.
+/// Remember to [dispose] of the [RichCodeEditingController] when it is no longer needed.
 /// This will ensure we discard any resources used by the object.
 ///
 /// {@tool sample}
-/// This example shows how to create a [CodeTextField] that will obscure input. The
+/// This example shows how to create a [RichCodeField] that will obscure input. The
 /// [InputDecoration] surrounds the field in a border using [OutlineInputBorder]
 /// and adds a label.
 ///
+/// ![](https://flutter.github.io/assets-for-api-docs/assets/material/text_field.png)
+///
 /// ```dart
-/// CodeTextField(
+/// PzCodeField(
 ///   obscureText: true,
 ///   decoration: InputDecoration(
 ///     border: OutlineInputBorder(),
@@ -85,18 +160,84 @@ typedef InputCounterWidgetBuilder = Widget Function(
 /// ```
 /// {@end-tool}
 ///
+/// ## Reading values
+///
+/// A common way to read a value from a PzCodeField is to use the [onSubmitted]
+/// callback. This callback is applied to the text field's current value when
+/// the user finishes editing.
+///
+/// {@tool dartpad --template=stateful_widget_material}
+///
+/// This sample shows how to get a value from a PzCodeField via the [onSubmitted]
+/// callback.
+///
+/// ```dart
+/// RichCodeEditingController _controller;
+///
+/// void initState() {
+///   super.initState();
+///   _controller = RichCodeEditingController();
+/// }
+///
+/// void dispose() {
+///   _controller.dispose();
+///   super.dispose();
+/// }
+///
+/// Widget build(BuildContext context) {
+///   return Scaffold(
+///     body: Center(
+///       child: PzCodeField(
+///         controller: _controller,
+///         onSubmitted: (String value) async {
+///           await showDialog<void>(
+///             context: context,
+///             builder: (BuildContext context) {
+///               return AlertDialog(
+///                 title: const Text('Thanks!'),
+///                 content: Text ('You typed "$value".'),
+///                 actions: <Widget>[
+///                   FlatButton(
+///                     onPressed: () { Navigator.pop(context); },
+///                     child: const Text('OK'),
+///                   ),
+///                 ],
+///               );
+///             },
+///           );
+///         },
+///       ),
+///     ),
+///   );
+/// }
+/// ```
+/// {@end-tool}
+///
+/// For most applications the [onSubmitted] callback will be sufficient for
+/// reacting to user input.
+///
+/// The [onEditingComplete] callback also runs when the user finishes editing.
+/// It's different from [onSubmitted] because it has a default value which
+/// updates the text controller and yields the keyboard focus. Applications that
+/// require different behavior can override the default [onEditingComplete]
+/// callback.
+///
+/// Keep in mind you can also always read the current string from a PzCodeField's
+/// [RichCodeEditingController] using [RichCodeEditingController.text].
+///
 /// See also:
 ///
 ///  * <https://material.io/design/components/text-fields.html>
 ///  * [TextFormField], which integrates with the [Form] widget.
 ///  * [InputDecorator], which shows the labels and other visual elements that
 ///    surround the actual text editing widget.
-///  * [CodeEditableText], which is the raw text editing control at the heart of a
-///    [CodeTextField]. The [CodeEditableText] widget is rarely used directly unless
+///  * [RichEditableCode], which is the raw text editing control at the heart of a
+///    [PzCodeField]. The [SynEditableCode] widget is rarely used directly unless
 ///    you are implementing an entirely different design language, such as
 ///    Cupertino.
-///  * Learn how to use a [CodeEditingController] in one of our [cookbook recipe]s.(https://flutter.dev/docs/cookbook/forms/text-field-changes#2-use-a-CodeEditingController)
-class CodeTextField extends StatefulWidget {
+///  * Learn how to use a [RichCodeEditingController] in one of our
+///    [cookbook recipe](https://flutter.dev/docs/cookbook/forms/text-field-changes#2-use-a-RichCodeEditingController)s.
+class RichCodeField extends StatefulWidget {
   /// Creates a Material Design text field.
   ///
   /// If [decoration] is non-null (which is the default), the text field requires
@@ -116,7 +257,7 @@ class CodeTextField extends StatefulWidget {
   /// field showing how many characters have been entered. If the value is
   /// set to a positive integer it will also display the maximum allowed
   /// number of characters to be entered.  If the value is set to
-  /// [CodeTextField.noMaxLength] then only the current length is displayed.
+  /// [RichCodeField.noMaxLength] then only the current length is displayed.
   ///
   /// After [maxLength] characters have been input, additional input
   /// is ignored, unless [maxLengthEnforced] is set to false. The text field
@@ -132,14 +273,14 @@ class CodeTextField extends StatefulWidget {
   /// is null (the default) and [readOnly] is true.
   ///
   /// The [textAlign], [autofocus], [obscureText], [readOnly], [autocorrect],
-  /// [maxLengthEnforced], [scrollPadding], [maxLines], and [maxLength]
-  /// arguments must not be null.
+  /// [maxLengthEnforced], [scrollPadding], [maxLines], [maxLength], and
+  /// [enableSuggestions] arguments must not be null.
   ///
   /// See also:
   ///
   ///  * [maxLength], which discusses the precise meaning of "number of
   ///    characters" and how it may differ from the intuitive meaning.
-  const CodeTextField({
+  const RichCodeField({
     Key key,
     this.controller,
     this.focusNode,
@@ -153,65 +294,84 @@ class CodeTextField extends StatefulWidget {
     this.textAlignVertical,
     this.textDirection,
     this.readOnly = false,
+    ToolbarOptions toolbarOptions,
     this.showCursor,
     this.autofocus = false,
+    this.obscureText = false,
     this.autocorrect = true,
+    this.enableSuggestions = true,
     this.maxLines = 1,
     this.minLines,
     this.expands = false,
     this.maxLength,
     this.maxLengthEnforced = true,
-    this.hideKeyboardUntilTapped = false,
     this.onChanged,
-    this.onBackSpacePress,
-    this.onEnterPress,
-    this.onPasteAction,
     this.onEditingComplete,
     this.onSubmitted,
     this.inputFormatters,
     this.enabled,
+    this.onBackSpacePress,
+    this.onEnterPress,
     this.cursorWidth = 2.0,
     this.cursorRadius,
     this.cursorColor,
     this.keyboardAppearance,
     this.scrollPadding = const EdgeInsets.all(20.0),
     this.dragStartBehavior = DragStartBehavior.start,
-    this.enableInteractiveSelection,
+    this.enableInteractiveSelection = true,
     this.onTap,
     this.buildCounter,
     this.scrollController,
-    this.scrollPhysics,
-    @required this.highlighter,
-  })  : assert(textAlign != null),
-        assert(readOnly != null),
-        assert(autofocus != null),
-        assert(autocorrect != null),
-        assert(maxLengthEnforced != null),
-        assert(scrollPadding != null),
-        assert(dragStartBehavior != null),
-        assert(maxLines == null || maxLines > 0),
-        assert(minLines == null || minLines > 0),
-        assert(highlighter != null),
-        assert(
-          (maxLines == null) || (minLines == null) || (maxLines >= minLines),
-          'minLines can\'t be greater than maxLines',
-        ),
-        assert(expands != null),
-        assert(
-          !expands || (maxLines == null && minLines == null),
-          'minLines and maxLines must be null when expands is true.',
-        ),
-        assert(maxLength == null ||
-            maxLength == CodeTextField.noMaxLength ||
-            maxLength > 0),
-        keyboardType = keyboardType ??
-            (maxLines == 1 ? TextInputType.text : TextInputType.multiline),
-        super(key: key);
+    this.scrollPhysics, this.syntaxHighlighter,
+  }) : assert(textAlign != null),
+       assert(readOnly != null),
+       assert(autofocus != null),
+       assert(obscureText != null),
+       assert(autocorrect != null),
+       assert(enableSuggestions != null),
+       assert(enableInteractiveSelection != null),
+       assert(maxLengthEnforced != null),
+       assert(scrollPadding != null),
+       assert(dragStartBehavior != null),
+       assert(maxLines == null || maxLines > 0),
+       assert(minLines == null || minLines > 0),
+       assert(
+         (maxLines == null) || (minLines == null) || (maxLines >= minLines),
+         'minLines can\'t be greater than maxLines',
+       ),
+       assert(expands != null),
+       assert(
+         !expands || (maxLines == null && minLines == null),
+         'minLines and maxLines must be null when expands is true.',
+       ),
+       assert(!obscureText || maxLines == 1, 'Obscured fields cannot be multiline.'),
+       assert(maxLength == null || maxLength == RichCodeField.noMaxLength || maxLength > 0),
+       keyboardType = keyboardType ?? (maxLines == 1 ? TextInputType.text : TextInputType.multiline),
+       toolbarOptions = toolbarOptions ?? (obscureText ?
+         const ToolbarOptions(
+           selectAll: true,
+           paste: true,
+         ) :
+         const ToolbarOptions(
+           copy: true,
+           cut: true,
+           selectAll: true,
+           paste: true,
+         )),
+       super(key: key);
 
   /// Controls the text being edited.
   ///
-  /// If null, this widget will create its own [CodeEditingController].
-  final CodeEditingController controller;
+  /// If null, this widget will create its own [RichCodeEditingController].
+  final RichCodeEditingController controller;
+
+  // Trigger when backspace was pressed with value before backspace was pressed
+  final ValueChanged<TextEditingValue> onBackSpacePress;
+
+  // Trigger when enter was pressed with value before enter was pressed
+  final ValueChanged<TextEditingValue> onEnterPress;
+
+  final SyntaxHighlighterBase syntaxHighlighter;
 
   /// Defines the keyboard focus for this widget.
   ///
@@ -249,8 +409,8 @@ class CodeTextField extends StatefulWidget {
   /// obscuring. In this case requesting the focus again will not
   /// cause the focus to change, and will not make the keyboard visible.
   ///
-  /// This widget builds an [CodeEditableText] and will ensure that the keyboard is
-  /// showing when it is tapped by calling [CodeEditableTextState.requestKeyboard()].
+  /// This widget builds an [RichEditableCode] and will ensure that the keyboard is
+  /// showing when it is tapped by calling [SynEditableCodeState.requestKeyboard()].
   final FocusNode focusNode;
 
   /// The decoration to show around the text field.
@@ -262,7 +422,7 @@ class CodeTextField extends StatefulWidget {
   /// extra padding introduced by the decoration to save space for the labels).
   final InputDecoration decoration;
 
-  /// {@macro flutter.widgets.CodeEditableText.keyboardType}
+  /// {@macro flutter.widgets.editableText.keyboardType}
   final TextInputType keyboardType;
 
   /// The type of action button to use for the keyboard.
@@ -271,7 +431,7 @@ class CodeTextField extends StatefulWidget {
   /// [TextInputType.multiline] and [TextInputAction.done] otherwise.
   final TextInputAction textInputAction;
 
-  /// {@macro flutter.widgets.CodeEditableText.textCapitalization}
+  /// {@macro flutter.widgets.editableText.textCapitalization}
   final TextCapitalization textCapitalization;
 
   /// The style to use for the text being edited.
@@ -281,40 +441,50 @@ class CodeTextField extends StatefulWidget {
   /// If null, defaults to the `subhead` text style from the current [Theme].
   final TextStyle style;
 
-  /// {@macro flutter.widgets.CodeEditableText.strutStyle}
+  /// {@macro flutter.widgets.editableText.strutStyle}
   final StrutStyle strutStyle;
 
-  /// {@macro flutter.widgets.CodeEditableText.textAlign}
+  /// {@macro flutter.widgets.editableText.textAlign}
   final TextAlign textAlign;
 
   /// {@macro flutter.material.inputDecorator.textAlignVertical}
   final TextAlignVertical textAlignVertical;
 
-  /// {@macro flutter.widgets.CodeEditableText.textDirection}
+  /// {@macro flutter.widgets.editableText.textDirection}
   final TextDirection textDirection;
 
-  /// {@macro flutter.widgets.CodeEditableText.autofocus}
+  /// {@macro flutter.widgets.editableText.autofocus}
   final bool autofocus;
 
-  /// {@macro flutter.widgets.CodeEditableText.autocorrect}
+  /// {@macro flutter.widgets.editableText.obscureText}
+  final bool obscureText;
+
+  /// {@macro flutter.widgets.editableText.autocorrect}
   final bool autocorrect;
 
-  /// {@macro flutter.widgets.CodeEditableText.maxLines}
+  /// {@macro flutter.services.textInput.enableSuggestions}
+  final bool enableSuggestions;
+
+  /// {@macro flutter.widgets.editableText.maxLines}
   final int maxLines;
 
-  /// {@macro flutter.widgets.CodeEditableText.minLines}
+  /// {@macro flutter.widgets.editableText.minLines}
   final int minLines;
 
-  /// {@macro flutter.widgets.CodeEditableText.expands}
+  /// {@macro flutter.widgets.editableText.expands}
   final bool expands;
 
-  /// {@macro flutter.widgets.CodeEditableText.readOnly}
+  /// {@macro flutter.widgets.editableText.readOnly}
   final bool readOnly;
 
-  /// Code Highlighter
-  final CodeEditingValueHighlighterBase highlighter;
+  /// Configuration of toolbar options.
+  ///
+  /// If not set, select all and paste will default to be enabled. Copy and cut
+  /// will be disabled if [obscureText] is true. If [readOnly] is true,
+  /// paste and cut will be disabled regardless.
+  final ToolbarOptions toolbarOptions;
 
-  /// {@macro flutter.widgets.CodeEditableText.showCursor}
+  /// {@macro flutter.widgets.editableText.showCursor}
   final bool showCursor;
 
   /// If [maxLength] is set to this value, only the "current input length"
@@ -327,16 +497,16 @@ class CodeTextField extends StatefulWidget {
   /// If set, a character counter will be displayed below the
   /// field showing how many characters have been entered. If set to a number
   /// greater than 0, it will also display the maximum number allowed. If set
-  /// to [CodeTextField.noMaxLength] then only the current character count is displayed.
+  /// to [RichCodeField.noMaxLength] then only the current character count is displayed.
   ///
   /// After [maxLength] characters have been input, additional input
   /// is ignored, unless [maxLengthEnforced] is set to false. The text field
   /// enforces the length with a [LengthLimitingTextInputFormatter], which is
   /// evaluated after the supplied [inputFormatters], if any.
   ///
-  /// This value must be either null, [CodeTextField.noMaxLength], or greater than 0.
+  /// This value must be either null, [RichCodeField.noMaxLength], or greater than 0.
   /// If null (the default) then there is no limit to the number of characters
-  /// that can be entered. If set to [CodeTextField.noMaxLength], then no limit will
+  /// that can be entered. If set to [RichCodeField.noMaxLength], then no limit will
   /// be enforced, but the number of characters entered will still be displayed.
   ///
   /// Whitespace characters (e.g. newline, space, tab) are included in the
@@ -382,12 +552,7 @@ class CodeTextField extends StatefulWidget {
   /// [maxLength] is exceeded.
   final bool maxLengthEnforced;
 
-  /// If this value is false, we do not show keyboard on the first load.
-  /// Only after a tap, the keyboard will become.
-  /// So the widget will display a cursor but not the keyboard
-  final bool hideKeyboardUntilTapped;
-
-  /// {@macro flutter.widgets.CodeEditableText.onChanged}
+  /// {@macro flutter.widgets.editableText.onChanged}
   ///
   /// See also:
   ///
@@ -397,23 +562,19 @@ class CodeTextField extends StatefulWidget {
   ///    which are more specialized input change notifications.
   final ValueChanged<String> onChanged;
 
-  // Trigger when backspace was pressed with value before backspace was pressed
-  final ValueChanged<CodeEditingValue> onBackSpacePress;
-
-  // Trigger when enter was pressed with value before enter was pressed
-  final ValueChanged<CodeEditingValue> onEnterPress;
-
-  /// Triggers after after paste action was performed on editor.
-  /// Use this callback to update line numbers if required.
-  final ValueChanged<CodeEditingValue> onPasteAction;
-
-  /// {@macro flutter.widgets.CodeEditableText.onEditingComplete}
+  /// {@macro flutter.widgets.editableText.onEditingComplete}
   final VoidCallback onEditingComplete;
 
-  /// {@macro flutter.widgets.CodeEditableText.onSubmitted}
+  /// {@macro flutter.widgets.editableText.onSubmitted}
+  ///
+  /// See also:
+  ///
+  ///  * [RichEditableCode.onSubmitted] for an example of how to handle moving to
+  ///    the next/previous field when using [TextInputAction.next] and
+  ///    [TextInputAction.previous] for [textInputAction].
   final ValueChanged<String> onSubmitted;
 
-  /// {@macro flutter.widgets.CodeEditableText.inputFormatters}
+  /// {@macro flutter.widgets.editableText.inputFormatters}
   final List<TextInputFormatter> inputFormatters;
 
   /// If false the text field is "disabled": it ignores taps and its
@@ -423,15 +584,16 @@ class CodeTextField extends StatefulWidget {
   /// [Decoration.enabled] property.
   final bool enabled;
 
-  /// {@macro flutter.widgets.CodeEditableText.cursorWidth}
+  /// {@macro flutter.widgets.editableText.cursorWidth}
   final double cursorWidth;
 
-  /// {@macro flutter.widgets.CodeEditableText.cursorRadius}
+  /// {@macro flutter.widgets.editableText.cursorRadius}
   final Radius cursorRadius;
 
   /// The color to use when painting the cursor.
   ///
-  /// Defaults to the theme's `cursorColor` when null.
+  /// Defaults to [ThemeData.cursorColor] or [CupertinoTheme.primaryColor]
+  /// depending on [ThemeData.platform].
   final Color cursorColor;
 
   /// The appearance of the keyboard.
@@ -441,21 +603,20 @@ class CodeTextField extends StatefulWidget {
   /// If unset, defaults to the brightness of [ThemeData.primaryColorBrightness].
   final Brightness keyboardAppearance;
 
-  /// {@macro flutter.widgets.CodeEditableText.scrollPadding}
+  /// {@macro flutter.widgets.editableText.scrollPadding}
   final EdgeInsets scrollPadding;
 
-  /// {@macro flutter.widgets.CodeEditableText.enableInteractiveSelection}
+  /// {@macro flutter.widgets.editableText.enableInteractiveSelection}
   final bool enableInteractiveSelection;
 
   /// {@macro flutter.widgets.scrollable.dragStartBehavior}
   final DragStartBehavior dragStartBehavior;
 
   /// {@macro flutter.rendering.editable.selectionEnabled}
-  bool get selectionEnabled {
-    return enableInteractiveSelection ?? true;
-  }
+  bool get selectionEnabled => enableInteractiveSelection;
 
-  /// Called when the user taps on this text field.
+  /// {@template flutter.material.textfield.onTap}
+  /// Called for each distinct tap except for every second tap of a double tap.
   ///
   /// The text field builds a [GestureDetector] to handle input events like tap,
   /// to trigger focus requests, to move the caret, adjust the selection, etc.
@@ -473,6 +634,7 @@ class CodeTextField extends StatefulWidget {
   ///
   /// To listen to arbitrary pointer events without competing with the
   /// text field's internal gesture detector, use a [Listener].
+  /// {@endtemplate}
   final GestureTapCallback onTap;
 
   /// Callback that generates a custom [InputDecorator.counter] widget.
@@ -507,132 +669,110 @@ class CodeTextField extends StatefulWidget {
   /// {@macro flutter.widgets.edtiableText.scrollPhysics}
   final ScrollPhysics scrollPhysics;
 
-  /// {@macro flutter.widgets.CodeEditableText.scrollController}
+  /// {@macro flutter.widgets.editableText.scrollController}
   final ScrollController scrollController;
 
   @override
-  CodeTextFieldState createState() => CodeTextFieldState();
+  _RichCodeFieldState createState() => _RichCodeFieldState();
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty<CodeEditingController>(
-        'controller', controller,
-        defaultValue: null));
-    properties.add(DiagnosticsProperty<FocusNode>('focusNode', focusNode,
-        defaultValue: null));
-    properties
-        .add(DiagnosticsProperty<bool>('enabled', enabled, defaultValue: null));
-    properties.add(DiagnosticsProperty<InputDecoration>(
-        'decoration', decoration,
-        defaultValue: const InputDecoration()));
-    properties.add(DiagnosticsProperty<TextInputType>(
-        'keyboardType', keyboardType,
-        defaultValue: TextInputType.text));
-    properties.add(
-        DiagnosticsProperty<TextStyle>('style', style, defaultValue: null));
-    properties.add(
-        DiagnosticsProperty<bool>('autofocus', autofocus, defaultValue: false));
-    properties.add(DiagnosticsProperty<bool>('autocorrect', autocorrect,
-        defaultValue: true));
+    properties.add(DiagnosticsProperty<RichCodeEditingController>('controller', controller, defaultValue: null));
+    properties.add(DiagnosticsProperty<FocusNode>('focusNode', focusNode, defaultValue: null));
+    properties.add(DiagnosticsProperty<bool>('enabled', enabled, defaultValue: null));
+    properties.add(DiagnosticsProperty<InputDecoration>('decoration', decoration, defaultValue: const InputDecoration()));
+    properties.add(DiagnosticsProperty<TextInputType>('keyboardType', keyboardType, defaultValue: TextInputType.text));
+    properties.add(DiagnosticsProperty<TextStyle>('style', style, defaultValue: null));
+    properties.add(DiagnosticsProperty<bool>('autofocus', autofocus, defaultValue: false));
+    properties.add(DiagnosticsProperty<bool>('obscureText', obscureText, defaultValue: false));
+    properties.add(DiagnosticsProperty<bool>('autocorrect', autocorrect, defaultValue: true));
+    properties.add(DiagnosticsProperty<bool>('enableSuggestions', enableSuggestions, defaultValue: true));
     properties.add(IntProperty('maxLines', maxLines, defaultValue: 1));
     properties.add(IntProperty('minLines', minLines, defaultValue: null));
-    properties.add(
-        DiagnosticsProperty<bool>('expands', expands, defaultValue: false));
+    properties.add(DiagnosticsProperty<bool>('expands', expands, defaultValue: false));
     properties.add(IntProperty('maxLength', maxLength, defaultValue: null));
-    properties.add(FlagProperty('maxLengthEnforced',
-        value: maxLengthEnforced,
-        defaultValue: true,
-        ifFalse: 'maxLength not enforced'));
-    properties.add(EnumProperty<TextInputAction>(
-        'textInputAction', textInputAction,
-        defaultValue: null));
-    properties.add(EnumProperty<TextCapitalization>(
-        'textCapitalization', textCapitalization,
-        defaultValue: TextCapitalization.none));
-    properties.add(EnumProperty<TextAlign>('textAlign', textAlign,
-        defaultValue: TextAlign.start));
-    properties.add(DiagnosticsProperty<TextAlignVertical>(
-        'textAlignVertical', textAlignVertical,
-        defaultValue: null));
-    properties.add(EnumProperty<TextDirection>('textDirection', textDirection,
-        defaultValue: null));
-    properties
-        .add(DoubleProperty('cursorWidth', cursorWidth, defaultValue: 2.0));
-    properties.add(DiagnosticsProperty<Radius>('cursorRadius', cursorRadius,
-        defaultValue: null));
-    properties
-        .add(ColorProperty('cursorColor', cursorColor, defaultValue: null));
-    properties.add(DiagnosticsProperty<Brightness>(
-        'keyboardAppearance', keyboardAppearance,
-        defaultValue: null));
-    properties.add(DiagnosticsProperty<EdgeInsetsGeometry>(
-        'scrollPadding', scrollPadding,
-        defaultValue: const EdgeInsets.all(20.0)));
-    properties.add(FlagProperty('selectionEnabled',
-        value: selectionEnabled,
-        defaultValue: true,
-        ifFalse: 'selection disabled'));
-    properties.add(DiagnosticsProperty<ScrollController>(
-        'scrollController', scrollController,
-        defaultValue: null));
-    properties.add(DiagnosticsProperty<ScrollPhysics>(
-        'scrollPhysics', scrollPhysics,
-        defaultValue: null));
+    properties.add(FlagProperty('maxLengthEnforced', value: maxLengthEnforced, defaultValue: true, ifFalse: 'maxLength not enforced'));
+    properties.add(EnumProperty<TextInputAction>('textInputAction', textInputAction, defaultValue: null));
+    properties.add(EnumProperty<TextCapitalization>('textCapitalization', textCapitalization, defaultValue: TextCapitalization.none));
+    properties.add(EnumProperty<TextAlign>('textAlign', textAlign, defaultValue: TextAlign.start));
+    properties.add(DiagnosticsProperty<TextAlignVertical>('textAlignVertical', textAlignVertical, defaultValue: null));
+    properties.add(EnumProperty<TextDirection>('textDirection', textDirection, defaultValue: null));
+    properties.add(DoubleProperty('cursorWidth', cursorWidth, defaultValue: 2.0));
+    properties.add(DiagnosticsProperty<Radius>('cursorRadius', cursorRadius, defaultValue: null));
+    properties.add(ColorProperty('cursorColor', cursorColor, defaultValue: null));
+    properties.add(DiagnosticsProperty<Brightness>('keyboardAppearance', keyboardAppearance, defaultValue: null));
+    properties.add(DiagnosticsProperty<EdgeInsetsGeometry>('scrollPadding', scrollPadding, defaultValue: const EdgeInsets.all(20.0)));
+    properties.add(FlagProperty('selectionEnabled', value: selectionEnabled, defaultValue: true, ifFalse: 'selection disabled'));
+    properties.add(DiagnosticsProperty<ScrollController>('scrollController', scrollController, defaultValue: null));
+    properties.add(DiagnosticsProperty<ScrollPhysics>('scrollPhysics', scrollPhysics, defaultValue: null));
   }
 }
 
-class CodeTextFieldState extends State<CodeTextField>
-    with AutomaticKeepAliveClientMixin {
-  final GlobalKey<CodeEditableTextState> _codeEditableTextKey =
-      GlobalKey<CodeEditableTextState>();
+abstract class CodeSelectionGestureDetectorBuilderDelegate {
+  /// [GlobalKey] to the [EditableText] for which the
+  /// [TextSelectionGestureDetectorBuilder] will build a [TextSelectionGestureDetector].
+  GlobalKey<RichEditableCodeState> get editableTextKey;
 
-  Set<InteractiveInkFeature> _splashes;
-  InteractiveInkFeature _currentSplash;
+  /// Whether the textfield should respond to force presses.
+  bool get forcePressEnabled;
 
-  CodeEditingController _controller;
-  CodeEditingController get _effectiveController =>
-      widget.controller ?? _controller;
+  /// Whether the user may select text in the textfield.
+  bool get selectionEnabled;
+}
+
+class _RichCodeFieldState extends State<RichCodeField> implements TextSelectionGestureDetectorBuilderDelegate {
+  RichCodeEditingController _controller;
+  RichCodeEditingController get _effectiveController => widget.controller ?? _controller;
 
   FocusNode _focusNode;
-  FocusNode get _effectiveFocusNode =>
-      widget.focusNode ?? (_focusNode ??= FocusNode());
+  FocusNode get _effectiveFocusNode => widget.focusNode ?? (_focusNode ??= FocusNode());
 
   bool _isHovering = false;
 
-  bool _showKeyboard = false;
-
-  bool get needsCounter =>
-      widget.maxLength != null &&
-      widget.decoration != null &&
-      widget.decoration.counterText == null;
-
-  bool _shouldShowSelectionToolbar = true;
+  bool get needsCounter => widget.maxLength != null
+    && widget.decoration != null
+    && widget.decoration.counterText == null;
 
   bool _showSelectionHandles = false;
 
+  _PzCodeFieldSelectionGestureDetectorBuilder _selectionGestureDetectorBuilder;
+
+  // API for TextSelectionGestureDetectorBuilderDelegate.
+  @override
+  bool forcePressEnabled;
+
+  @override
+  final GlobalKey<RichEditableCodeState> editableTextKey = GlobalKey<RichEditableCodeState>();
+
+  @override
+  bool get selectionEnabled => widget.selectionEnabled;
+  // End of API for TextSelectionGestureDetectorBuilderDelegate.
+
+  bool get _isEnabled =>  widget.enabled ?? widget.decoration?.enabled ?? true;
+
+  int get _currentLength => _effectiveController.value.text.runes.length;
+
   InputDecoration _getEffectiveDecoration() {
-    final MaterialLocalizations localizations =
-        MaterialLocalizations.of(context);
+    final MaterialLocalizations localizations = MaterialLocalizations.of(context);
     final ThemeData themeData = Theme.of(context);
-    final InputDecoration effectiveDecoration =
-        (widget.decoration ?? const InputDecoration())
-            .applyDefaults(themeData.inputDecorationTheme)
-            .copyWith(
-              enabled: widget.enabled,
-              hintMaxLines: widget.decoration?.hintMaxLines ?? widget.maxLines,
-            );
+    final InputDecoration effectiveDecoration = (widget.decoration ?? const InputDecoration())
+      .applyDefaults(themeData.inputDecorationTheme)
+      .copyWith(
+        enabled: widget.enabled,
+        hintMaxLines: widget.decoration?.hintMaxLines ?? widget.maxLines,
+      );
 
     // No need to build anything if counter or counterText were given directly.
-    if (effectiveDecoration.counter != null ||
-        effectiveDecoration.counterText != null) return effectiveDecoration;
+    if (effectiveDecoration.counter != null || effectiveDecoration.counterText != null)
+      return effectiveDecoration;
 
     // If buildCounter was provided, use it to generate a counter widget.
     Widget counter;
-    final int currentLength = _effectiveController.value.text.runes.length;
-    if (effectiveDecoration.counter == null &&
-        effectiveDecoration.counterText == null &&
-        widget.buildCounter != null) {
+    final int currentLength = _currentLength;
+    if (effectiveDecoration.counter == null
+        && effectiveDecoration.counterText == null
+        && widget.buildCounter != null) {
       final bool isFocused = _effectiveFocusNode.hasFocus;
       counter = Semantics(
         container: true,
@@ -649,29 +789,55 @@ class CodeTextFieldState extends State<CodeTextField>
 
     if (widget.maxLength == null)
       return effectiveDecoration; // No counter widget
+
+    String counterText = '$currentLength';
+    String semanticCounterText = '';
+
+    // Handle a real maxLength (positive number)
+    if (widget.maxLength > 0) {
+      // Show the maxLength in the counter
+      counterText += '/${widget.maxLength}';
+      final int remaining = (widget.maxLength - currentLength).clamp(0, widget.maxLength);
+      semanticCounterText = localizations.remainingTextFieldCharacterCount(remaining);
+
+      // Handle length exceeds maxLength
+      if (_effectiveController.value.text.runes.length > widget.maxLength) {
+        return effectiveDecoration.copyWith(
+          errorText: effectiveDecoration.errorText ?? '',
+          counterStyle: effectiveDecoration.errorStyle
+            ?? themeData.textTheme.caption.copyWith(color: themeData.errorColor),
+          counterText: counterText,
+          semanticCounterText: semanticCounterText,
+        );
+      }
+    }
+
+    return effectiveDecoration.copyWith(
+      counterText: counterText,
+      semanticCounterText: semanticCounterText,
+    );
   }
 
   @override
   void initState() {
     super.initState();
-    if (widget.controller == null) _controller = CodeEditingController();
+    _selectionGestureDetectorBuilder = _PzCodeFieldSelectionGestureDetectorBuilder(state: this);
+    if (widget.controller == null) {
+      _controller = RichCodeEditingController(widget.syntaxHighlighter);
+    }
+    _effectiveFocusNode.canRequestFocus = _isEnabled;
   }
 
   @override
-  void didUpdateWidget(CodeTextField oldWidget) {
+  void didUpdateWidget(RichCodeField oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.controller == null && oldWidget.controller != null)
-      _controller = CodeEditingController.fromValue(oldWidget.controller.value);
+      _controller = RichCodeEditingController.fromValue(oldWidget.controller.value, widget.syntaxHighlighter);
     else if (widget.controller != null && oldWidget.controller == null)
       _controller = null;
-    final bool isEnabled = widget.enabled ?? widget.decoration?.enabled ?? true;
-    final bool wasEnabled =
-        oldWidget.enabled ?? oldWidget.decoration?.enabled ?? true;
-    if (wasEnabled && !isEnabled) {
-      _effectiveFocusNode.unfocus();
-    }
+    _effectiveFocusNode.canRequestFocus = _isEnabled;
     if (_effectiveFocusNode.hasFocus && widget.readOnly != oldWidget.readOnly) {
-      if (_effectiveController.selection.isCollapsed) {
+      if(_effectiveController.selection.isCollapsed) {
         _showSelectionHandles = !widget.readOnly;
       }
     }
@@ -683,32 +849,34 @@ class CodeTextFieldState extends State<CodeTextField>
     super.dispose();
   }
 
-  CodeEditableTextState get _codeEditableText =>
-      _codeEditableTextKey.currentState;
+  RichEditableCodeState get _editableText => editableTextKey.currentState;
 
   void _requestKeyboard() {
-    _codeEditableText?.requestKeyboard();
+    _editableText?.requestKeyboard();
   }
 
-  bool _shouldShowSelectionHandles(ce.SelectionChangedCause cause) {
+  bool _shouldShowSelectionHandles(SelectionChangedCause cause) {
     // When the text field is activated by something that doesn't trigger the
     // selection overlay, we shouldn't show the handles either.
-    if (!_shouldShowSelectionToolbar) return false;
+    if (!_selectionGestureDetectorBuilder.shouldShowSelectionToolbar)
+      return false;
 
-    if (cause == SelectionChangedCause.keyboard) return false;
+    if (cause == SelectionChangedCause.keyboard)
+      return false;
 
     if (widget.readOnly && _effectiveController.selection.isCollapsed)
       return false;
 
-    if (cause == SelectionChangedCause.longPress) return true;
+    if (cause == SelectionChangedCause.longPress)
+      return true;
 
-    if (_effectiveController.textSpan.text.isNotEmpty) return true;
+    if (_effectiveController.text.isNotEmpty)
+      return true;
 
     return false;
   }
 
-  void _handleSelectionChanged(
-      TextSelection selection, ce.SelectionChangedCause cause) {
+  void _handleSelectionChanged(TextSelection selection, SelectionChangedCause cause) {
     final bool willShowSelectionHandles = _shouldShowSelectionHandles(cause);
     if (willShowSelectionHandles != _showSelectionHandles) {
       setState(() {
@@ -719,161 +887,21 @@ class CodeTextFieldState extends State<CodeTextField>
     switch (Theme.of(context).platform) {
       case TargetPlatform.iOS:
         if (cause == SelectionChangedCause.longPress) {
-          _codeEditableText?.bringIntoView(selection.base);
+          _editableText?.bringIntoView(selection.base);
         }
         return;
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
-      // Do nothing.
+        // Do nothing.
     }
   }
 
   /// Toggle the toolbar when a selection handle is tapped.
   void _handleSelectionHandleTapped() {
     if (_effectiveController.selection.isCollapsed) {
-      _codeEditableText.toggleToolbar();
+      _editableText?.toggleToolbar();
     }
   }
-
-  ce.RenderEditableCode get _renderEditable =>
-      _codeEditableTextKey.currentState.renderEditable;
-
-  void _handleTapDown(TapDownDetails details) {
-    _renderEditable.handleTapDown(details);
-
-    // The selection overlay should only be shown when the user is interacting
-    // through a touch screen (via either a finger or a stylus). A mouse shouldn't
-    // trigger the selection overlay.
-    // For backwards-compatibility, we treat a null kind the same as touch.
-    final PointerDeviceKind kind = details.kind;
-    _shouldShowSelectionToolbar = kind == null ||
-        kind == PointerDeviceKind.touch ||
-        kind == PointerDeviceKind.stylus;
-  }
-
-  void _handleForcePressStarted(ForcePressDetails details) {
-    if (widget.selectionEnabled) {
-      _renderEditable.selectWordsInRange(
-        from: details.globalPosition,
-        cause: ce.SelectionChangedCause.forcePress,
-      );
-      if (_shouldShowSelectionToolbar) {
-        _codeEditableTextKey.currentState.showToolbar();
-      }
-    }
-  }
-
-  void _handleSingleTapUp(TapUpDetails details) {
-    _codeEditableText?.enableShowKeyboard();
-    _codeEditableText?.hideToolbar(); //ensure toolbar is hidden if there was initially created
-    if (widget.selectionEnabled) {
-      switch (Theme.of(context).platform) {
-        case TargetPlatform.iOS:
-          _renderEditable.selectWordEdge(cause: ce.SelectionChangedCause.tap);
-          break;
-        case TargetPlatform.android:
-        case TargetPlatform.fuchsia:
-          _renderEditable.selectPosition(cause: ce.SelectionChangedCause.tap);
-          break;
-      }
-    }
-    _requestKeyboard();
-    if (widget.onTap != null) widget.onTap();
-  }
-
-  void _handleSingleTapCancel() {
-  }
-
-  void _handleSingleLongTapStart(LongPressStartDetails details) {
-    if (widget.selectionEnabled) {
-      switch (Theme.of(context).platform) {
-        case TargetPlatform.iOS:
-          _renderEditable.selectPositionAt(
-            from: details.globalPosition,
-            cause: ce.SelectionChangedCause.longPress,
-          );
-          break;
-        case TargetPlatform.android:
-        case TargetPlatform.fuchsia:
-          _renderEditable.selectWord(cause: ce.SelectionChangedCause.longPress);
-          Feedback.forLongPress(context);
-          break;
-      }
-    }
-  }
-
-  void _handleSingleLongTapMoveUpdate(LongPressMoveUpdateDetails details) {
-    if (widget.selectionEnabled) {
-      switch (Theme.of(context).platform) {
-        case TargetPlatform.iOS:
-          _renderEditable.selectPositionAt(
-            from: details.globalPosition,
-            cause: ce.SelectionChangedCause.longPress,
-          );
-          break;
-        case TargetPlatform.android:
-        case TargetPlatform.fuchsia:
-          _renderEditable.selectWordsInRange(
-            from: details.globalPosition - details.offsetFromOrigin,
-            to: details.globalPosition,
-            cause: ce.SelectionChangedCause.longPress,
-          );
-          break;
-      }
-    }
-  }
-
-  void _handleSingleLongTapEnd(LongPressEndDetails details) {
-    if (widget.selectionEnabled) {
-      if (_shouldShowSelectionToolbar)
-        _codeEditableTextKey.currentState.showToolbar();
-    }
-  }
-
-  void _handleDoubleTapDown(TapDownDetails details) {
-    if (widget.selectionEnabled) {
-      _renderEditable.selectWord(cause: ce.SelectionChangedCause.doubleTap);
-      if (_shouldShowSelectionToolbar) {
-        _codeEditableText.showToolbar();
-      }
-    }
-  }
-
-  void _handleMouseDragSelectionStart(DragStartDetails details) {
-    _renderEditable.selectPositionAt(
-      from: details.globalPosition,
-      cause: ce.SelectionChangedCause.drag,
-    );
-  }
-
-  void _handleMouseDragSelectionUpdate(
-    DragStartDetails startDetails,
-    DragUpdateDetails updateDetails,
-  ) {
-    _renderEditable.selectPositionAt(
-      from: startDetails.globalPosition,
-      to: updateDetails.globalPosition,
-      cause: ce.SelectionChangedCause.drag,
-    );
-  }
-
-  @override
-  bool get wantKeepAlive => _splashes != null && _splashes.isNotEmpty;
-
-  @override
-  void deactivate() {
-    if (_splashes != null) {
-      final Set<InteractiveInkFeature> splashes = _splashes;
-      _splashes = null;
-      for (InteractiveInkFeature splash in splashes) splash.dispose();
-      _currentSplash = null;
-    }
-    assert(_currentSplash == null);
-    super.deactivate();
-  }
-
-  void _handlePointerEnter(PointerEnterEvent event) => _handleHover(true);
-  void _handlePointerExit(PointerExitEvent event) => _handleHover(false);
 
   void _handleHover(bool hovering) {
     if (hovering != _isHovering) {
@@ -883,44 +911,28 @@ class CodeTextFieldState extends State<CodeTextField>
     }
   }
 
-  _pasteHandler() {
-    this._codeEditableText.pendingPasteUpdate = true;
-  }
-
-  _toTextEditingValue(CodeEditingValue codeEditingValue) {
-    return TextEditingValue(
-        text: codeEditingValue.text,
-        composing: codeEditingValue.composing,
-        selection: codeEditingValue.selection);
-  }
-
   @override
   Widget build(BuildContext context) {
-    super.build(context); // See AutomaticKeepAliveClientMixin.
     assert(debugCheckHasMaterial(context));
     // TODO(jonahwilliams): uncomment out this check once we have migrated tests.
     // assert(debugCheckHasMaterialLocalizations(context));
     assert(debugCheckHasDirectionality(context));
     assert(
-      !(widget.style != null &&
-          widget.style.inherit == false &&
-          (widget.style.fontSize == null || widget.style.textBaseline == null)),
+      !(widget.style != null && widget.style.inherit == false &&
+        (widget.style.fontSize == null || widget.style.textBaseline == null)),
       'inherit false style must supply fontSize and textBaseline',
     );
 
     final ThemeData themeData = Theme.of(context);
     final TextStyle style = themeData.textTheme.subhead.merge(widget.style);
-    final Brightness keyboardAppearance =
-        widget.keyboardAppearance ?? themeData.primaryColorBrightness;
-    final CodeEditingController controller = _effectiveController;
+    final Brightness keyboardAppearance = widget.keyboardAppearance ?? themeData.primaryColorBrightness;
+    final RichCodeEditingController controller = _effectiveController;
     final FocusNode focusNode = _effectiveFocusNode;
-    final List<TextInputFormatter> formatters =
-        widget.inputFormatters ?? <TextInputFormatter>[];
+    final List<TextInputFormatter> formatters = widget.inputFormatters ?? <TextInputFormatter>[];
     if (widget.maxLength != null && widget.maxLengthEnforced)
       formatters.add(LengthLimitingTextInputFormatter(widget.maxLength));
 
-    bool forcePressEnabled;
-    cs.TextSelectionControls textSelectionControls;
+    TextSelectionControls textSelectionControls;
     bool paintCursorAboveText;
     bool cursorOpacityAnimates;
     Offset cursorOffset;
@@ -930,27 +942,18 @@ class CodeTextFieldState extends State<CodeTextField>
     switch (themeData.platform) {
       case TargetPlatform.iOS:
         forcePressEnabled = true;
-        textSelectionControls = textSelectionControls;
+        textSelectionControls = cupertinoTextSelectionControls;
         paintCursorAboveText = true;
         cursorOpacityAnimates = true;
         cursorColor ??= CupertinoTheme.of(context).primaryColor;
         cursorRadius ??= const Radius.circular(2.0);
-        // An eyeballed value that moves the cursor slightly left of where it is
-        // rendered for text on Android so its positioning more accurately matches the
-        // native iOS text cursor positioning.
-        //
-        // This value is in device pixels, not logical pixels as is typically used
-        // throughout the codebase.
-        const int _iOSHorizontalOffset = -2;
-        cursorOffset = Offset(
-            _iOSHorizontalOffset / MediaQuery.of(context).devicePixelRatio, 0);
+        cursorOffset = Offset(iOSHorizontalOffset / MediaQuery.of(context).devicePixelRatio, 0);
         break;
 
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
         forcePressEnabled = false;
-        textSelectionControls = ms.MaterialTextSelectionControls(
-            _pasteHandler); // ms.materialTextSelectionControls;
+        textSelectionControls = materialTextSelectionControls;
         paintCursorAboveText = false;
         cursorOpacityAnimates = false;
         cursorColor ??= themeData.cursorColor;
@@ -958,10 +961,10 @@ class CodeTextFieldState extends State<CodeTextField>
     }
 
     Widget child = RepaintBoundary(
-      child: CodeEditableText(
-        key: _codeEditableTextKey,
-        highlighter: widget.highlighter,
+      child: RichEditableCode(
+        key: editableTextKey,
         readOnly: widget.readOnly,
+        toolbarOptions: widget.toolbarOptions,
         showCursor: widget.showCursor,
         showSelectionHandles: _showSelectionHandles,
         controller: controller,
@@ -974,18 +977,15 @@ class CodeTextFieldState extends State<CodeTextField>
         textAlign: widget.textAlign,
         textDirection: widget.textDirection,
         autofocus: widget.autofocus,
+        obscureText: widget.obscureText,
         autocorrect: widget.autocorrect,
+        enableSuggestions: widget.enableSuggestions,
         maxLines: widget.maxLines,
         minLines: widget.minLines,
         expands: widget.expands,
         selectionColor: themeData.textSelectionColor,
-        selectionControls:
-            widget.selectionEnabled ? textSelectionControls : null,
+        selectionControls: widget.selectionEnabled ? textSelectionControls : null,
         onChanged: widget.onChanged,
-        hideKeyboardUntilTapped: widget.hideKeyboardUntilTapped,
-        onBackSpacePress: widget.onBackSpacePress,
-        onEnterPress: widget.onEnterPress,
-        onPasteAction: widget.onPasteAction,
         onSelectionChanged: _handleSelectionChanged,
         onEditingComplete: widget.onEditingComplete,
         onSubmitted: widget.onSubmitted,
@@ -1005,12 +1005,14 @@ class CodeTextFieldState extends State<CodeTextField>
         dragStartBehavior: widget.dragStartBehavior,
         scrollController: widget.scrollController,
         scrollPhysics: widget.scrollPhysics,
+        onBackSpacePress: widget.onBackSpacePress,
+        onEnterPress: widget.onEnterPress,
       ),
     );
 
     if (widget.decoration != null) {
       child = AnimatedBuilder(
-        animation: Listenable.merge(<Listenable>[focusNode, controller]),
+        animation: Listenable.merge(<Listenable>[ focusNode, controller ]),
         builder: (BuildContext context, Widget child) {
           return InputDecorator(
             decoration: _getEffectiveDecoration(),
@@ -1027,31 +1029,28 @@ class CodeTextFieldState extends State<CodeTextField>
         child: child,
       );
     }
-
-    return Semantics(
-      onTap: () {
-        if (!_effectiveController.selection.isValid)
-          _effectiveController.selection = TextSelection.collapsed(
-              offset: _effectiveController.textSpan.text.length);
-        _requestKeyboard();
-      },
-      child: Listener(
-        onPointerEnter: _handlePointerEnter,
-        onPointerExit: _handlePointerExit,
-        child: IgnorePointer(
-          ignoring: !(widget.enabled ?? widget.decoration?.enabled ?? true),
-          child: TextSelectionGestureDetector(
-            onTapDown: _handleTapDown,
-            onForcePressStart:
-                forcePressEnabled ? _handleForcePressStarted : null,
-            onSingleTapUp: _handleSingleTapUp,
-            onSingleTapCancel: _handleSingleTapCancel,
-            onSingleLongTapStart: _handleSingleLongTapStart,
-            onSingleLongTapMoveUpdate: _handleSingleLongTapMoveUpdate,
-            onSingleLongTapEnd: _handleSingleLongTapEnd,
-            onDoubleTapDown: _handleDoubleTapDown,
-            onDragSelectionStart: _handleMouseDragSelectionStart,
-            onDragSelectionUpdate: _handleMouseDragSelectionUpdate,
+    return IgnorePointer(
+      ignoring: !_isEnabled,
+      child: MouseRegion(
+        onEnter: (PointerEnterEvent event) => _handleHover(true),
+        onExit: (PointerExitEvent event) => _handleHover(false),
+        child: AnimatedBuilder(
+          animation: controller, // changes the _currentLength
+          builder: (BuildContext context, Widget child) {
+            return Semantics(
+              maxValueLength: widget.maxLengthEnforced && widget.maxLength != null && widget.maxLength > 0
+                  ? widget.maxLength
+                  : null,
+              currentValueLength: _currentLength,
+              onTap: () {
+                if (!_effectiveController.selection.isValid)
+                  _effectiveController.selection = TextSelection.collapsed(offset: _effectiveController.text.length);
+                _requestKeyboard();
+              },
+              child: child,
+            );
+          },
+          child: _selectionGestureDetectorBuilder.buildGestureDetector(
             behavior: HitTestBehavior.translucent,
             child: child,
           ),
