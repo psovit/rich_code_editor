@@ -93,6 +93,11 @@ class RichCodeEditingController extends ValueNotifier<TextEditingValue> implemen
   void clear() {
     value = TextEditingValue.empty;
   }
+  
+  /// Check that the [selection] is inside of the bounds of [text].
+  bool isSelectionWithinTextBounds(TextSelection selection) {
+    return selection.start <= text.length && selection.end <= text.length;
+  }
 
   /// Set the composing region to an empty range.
   ///
