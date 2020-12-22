@@ -15,7 +15,7 @@ There are two main components of the rich code editor:
 
 The editor is a text area which is identical to Flutter's `TextField` widget. However, unlike a regular `TextField` the editor uses an instance of syntax highlighter object to parse and highlight code syntax.
 
-Since the editor itself is independent of the syntax highlighting rules, the same editor can be used for any other programming langugages. Only the syntax highlighter implentation needs to be created separately for each new programming language.
+Since the editor itself is independent of the syntax highlighting rules, the same editor can be used for any other programming langugages. Only the syntax highlighter implementation needs to be created separately for each new programming language.
 
 The example demo uses a dummy syntax highlighter implementation `DummySyntaxHighlighter`.
 
