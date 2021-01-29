@@ -76,7 +76,7 @@ class RichCodeEditingController extends ValueNotifier<TextEditingValue> implemen
   /// in a separate statement. To change both the [text] and the [selection]
   /// change the controller's [value].
   set selection(TextSelection newSelection) {
-    if (newSelection.start > text.length || newSelection.end > text.length)
+    if (!isSelectionWithinTextBounds(newSelection))
       throw FlutterError.fromParts(<DiagnosticsNode>[ErrorSummary('invalid text selection: $newSelection')]);
     value = value.copyWith(selection: newSelection, composing: TextRange.empty);
   }
