@@ -2,7 +2,7 @@
 
 A simple package that supports creating code editors in Flutter.
 
-Flutter version supported: Flutter 1.12.13+hotfix.7
+Flutter version supported: Flutter 1.22.5
 
 ![](https://github.com/psovit/rich_code_editor/blob/master/demo.gif)
 

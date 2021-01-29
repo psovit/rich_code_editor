@@ -1,3 +1,5 @@
+## [1.0.5] - 29th January 2020
+* Upgrade to stable Flutter 1.22.5
 ## [1.0.0] - 19th May 2020
 ### Major Breaking Changes from Previous versions
 * Rebuilt code editor from ground up.
